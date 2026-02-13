@@ -8,6 +8,7 @@ import { BlurView } from 'expo-blur';
 
 import OnboardingScreen from '../screens/OnboardingScreen';
 import LoginScreen from '../screens/LoginScreen';
+import SignupScreen from '../screens/SignupScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import LibraryScreen from '../screens/LibraryScreen';
 import ExploreScreen from '../screens/ExploreScreen';
@@ -77,15 +78,22 @@ const MainTabs = () => {
 
 const AppNavigator = () => {
     return (
-        <NavigationContainer>
+        <NavigationContainer style={styles.navContainer}>
             <Stack.Navigator screenOptions={{ headerShown: false, animationEnabled: true }}>
                 <Stack.Screen name="Splash" component={SplashScreen} />
                 <Stack.Screen name="Onboarding" component={OnboardingScreen} />
                 <Stack.Screen name="Login" component={LoginScreen} />
+                <Stack.Screen name="Signup" component={SignupScreen} />
                 <Stack.Screen name="Main" component={MainTabs} />
             </Stack.Navigator>
         </NavigationContainer>
     );
 };
+
+const styles = StyleSheet.create({
+    navContainer: {
+        flex: 1,
+    },
+});
 
 export default AppNavigator;

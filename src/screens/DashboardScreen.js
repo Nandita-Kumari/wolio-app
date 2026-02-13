@@ -13,7 +13,12 @@ const DashboardScreen = () => {
                 style={StyleSheet.absoluteFill}
             />
             <SafeAreaView style={styles.safeArea}>
-                <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.scrollWrapper}>
+                    <ScrollView
+                        style={styles.scrollView}
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={true}
+                    >
                     {/* Header */}
                     <View style={styles.header}>
                         <View style={styles.userInfo}>
@@ -174,7 +179,8 @@ const DashboardScreen = () => {
                     </GlassCard>
 
                     <View style={{ height: 100 }} />
-                </ScrollView>
+                    </ScrollView>
+                </View>
             </SafeAreaView>
         </View>
     );
@@ -185,6 +191,13 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     safeArea: {
+        flex: 1,
+    },
+    scrollWrapper: {
+        flex: 1,
+        minHeight: 0,
+    },
+    scrollView: {
         flex: 1,
     },
     scrollContent: {

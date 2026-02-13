@@ -31,12 +31,14 @@ const LoginScreen = ({ navigation }) => {
                 style={styles.keyboardView}
             >
                 <View style={styles.header}>
-                    <LinearGradient
-                        colors={GRADIENTS.primary}
-                        style={styles.logoContainer}
-                    >
-                        <Sparkles color="#fff" size={32} />
-                    </LinearGradient>
+                    <View style={styles.logoWrapper}>
+                        <LinearGradient
+                            colors={GRADIENTS.primary}
+                            style={styles.logoContainer}
+                        >
+                            <Sparkles color="#fff" size={32} />
+                        </LinearGradient>
+                    </View>
                     <Text style={styles.title}>Welcome Back</Text>
                     <Text style={styles.subtitle}>Sign in to continue your learning journey</Text>
                 </View>
@@ -78,7 +80,7 @@ const LoginScreen = ({ navigation }) => {
 
                 <View style={styles.footer}>
                     <Text style={styles.footerText}>Don't have an account? </Text>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
                         <Text style={styles.signupText}>Sign Up</Text>
                     </TouchableOpacity>
                 </View>
@@ -101,13 +103,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 40,
     },
+    logoWrapper: {
+        width: 64,
+        height: 64,
+        transform: [{ rotate: '-15deg' }],
+        marginBottom: 24,
+    },
     logoContainer: {
         width: 64,
         height: 64,
         borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 24,
         ...SHADOWS.medium,
     },
     title: {
