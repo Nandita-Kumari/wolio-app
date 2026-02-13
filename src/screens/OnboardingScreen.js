@@ -1,70 +1,82 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Dimensions, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, Dimensions, TouchableOpacity, Animated, Easing } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { GraduationCap, Users, Sparkles, Check } from 'lucide-react-native';
+import { GraduationCap, Users, Sparkles, Lock } from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
-import GlassCard from '../components/GlassCard';
-import GradientButton from '../components/GradientButton';
 
 const { width } = Dimensions.get('window');
 
-const RoleCard = ({ title, description, icon: Icon, selected, onPress }) => {
+const RoleCard = ({ title, description, icon: Icon, selected, onPress, color }) => {
     return (
-        <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={{ marginBottom: 16 }}>
-            <GlassCard
-                style={[
-                    styles.roleCard,
-                    selected && { borderColor: COLORS.primary, borderWidth: 2 }
-                ]}
-                intensity={selected ? 60 : 40}
-            >
-                <View style={styles.roleCardContent}>
-                    <View style={[styles.iconContainer, { backgroundColor: selected ? COLORS.primary : '#8B5CF6' }]}>
-                        <Icon color="#fff" size={24} />
-                    </View>
-                    <View style={styles.roleTextContainer}>
-                        <Text style={styles.roleTitle}>{title}</Text>
-                        <Text style={styles.roleDescription}>{description}</Text>
-                    </View>
-                    {selected && (
-                        <View style={styles.checkCircle}>
-                            <Check size={16} color="#fff" />
-                        </View>
-                    )}
-                </View>
-            </GlassCard>
+        <TouchableOpacity
+            onPress={onPress}
+            activeOpacity={0.9}
+            style={[
+                styles.roleCard,
+                selected && styles.roleCardSelected,
+                selected && { borderColor: color }
+            ]}
+        >
+            <View style={[styles.iconContainer, { backgroundColor: color }]}>
+                <Icon color="#fff" size={24} />
+            </View>
+            <View style={styles.textContainer}>
+                <Text style={styles.roleTitle}>{title}</Text>
+                <Text style={styles.roleDescription}>{description}</Text>
+            </View>
         </TouchableOpacity>
     );
 };
 
 const OnboardingScreen = ({ navigation }) => {
-    const [role, setRole] = useState('student'); // 'student' or 'parent'
+    const [role, setRole] = useState(null);
+    const rotateAnim = new Animated.Value(0);
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.timing(rotateAnim, {
+                toValue: 1,
+                duration: 4000,
+                easing: Easing.linear,
+                useNativeDriver: true,
+            })
+        ).start();
+    }, []);
+
+    const spin = rotateAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '360deg'],
+    });
 
     const handleContinue = () => {
-        // Navigate to Dashboard or Main App
-        // For now, let's assume we have a 'Main' stack
-        navigation.replace('Main');
+        if (role) {
+            navigation.replace('Login');
+        }
     };
 
     return (
         <View style={styles.container}>
             <LinearGradient
-                colors={[COLORS.background, '#FBCFE8', '#F3E8FF']}
+                colors={['#F3E8FF', '#FCE7F3', '#FFFFFF']}
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
             />
 
             <SafeAreaView style={styles.safeArea}>
+
+                {/* Header Section */}
                 <View style={styles.header}>
-                    <LinearGradient
-                        colors={GRADIENTS.primary}
-                        style={styles.logoContainer}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                    >
-                        <Sparkles color="#fff" size={32} />
-                    </LinearGradient>
+                    <Animated.View style={[styles.logoContainer, { transform: [{ rotate: spin }] }]}>
+                        <LinearGradient
+                            colors={['#C084FC', '#A855F7', '#7E22CE']}
+                            style={styles.logoGradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                        >
+                            <Sparkles color="#fff" size={40} style={{ transform: [{ rotate: '-15deg' }] }} />
+                        </LinearGradient>
+                    </Animated.View>
 
                     <Text style={styles.appName}>WOLIO</Text>
                     <Text style={styles.tagline}>New era. New learning.</Text>
@@ -72,36 +84,58 @@ const OnboardingScreen = ({ navigation }) => {
                     <Text style={styles.microTagline}>Strong AI • Real-time • Future-proof</Text>
                 </View>
 
-                <View style={styles.content}>
-                    <GlassCard style={styles.cardContainer} intensity={30}>
+                {/* Content Card */}
+                <View style={styles.cardContainer}>
+                    <View style={styles.card}>
                         <RoleCard
                             title="I am a Student"
                             description="Access your library, read books, and chat with AI"
                             icon={GraduationCap}
                             selected={role === 'student'}
                             onPress={() => setRole('student')}
+                            color="#A855F7" // Purple
                         />
+
                         <RoleCard
                             title="I am a Parent"
                             description="Monitor your child's reading and set controls"
                             icon={Users}
                             selected={role === 'parent'}
                             onPress={() => setRole('parent')}
+                            color="#6366F1" // Indigo/Blue
                         />
 
                         <View style={styles.spacer} />
 
-                        <GradientButton
-                            title={`Continue as ${role === 'student' ? 'Student' : 'Parent'}`}
+                        <TouchableOpacity
                             onPress={handleContinue}
-                            icon={<View style={{ transform: [{ rotate: '-45deg' }] }}><Text style={{ color: '#fff' }}>→</Text></View>} // Simple arrow for now or import ArrowRight
-                        />
-                    </GlassCard>
+                            disabled={!role}
+                            activeOpacity={0.8}
+                            style={[
+                                styles.button,
+                                !role && styles.buttonDisabled
+                            ]}
+                        >
+                            <LinearGradient
+                                colors={role ? ['#D8B4FE', '#C084FC', '#E879F9'] : ['#E9D5FF', '#E9D5FF']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.buttonGradient}
+                            >
+                                <Text style={styles.buttonText}>
+                                    {role ? `Continue as ${role === 'student' ? 'Student' : 'Parent'}` : 'Select a role to continue'}
+                                </Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
+                {/* Footer */}
                 <View style={styles.footer}>
-                    <Text style={styles.footerText}>🔒 Safe, secure, and designed for learning</Text>
+                    <Lock size={12} color="#6B7280" style={{ marginRight: 6 }} />
+                    <Text style={styles.footerText}>Safe, secure, and designed for learning</Text>
                 </View>
+
             </SafeAreaView>
         </View>
     );
@@ -113,60 +147,86 @@ const styles = StyleSheet.create({
     },
     safeArea: {
         flex: 1,
-        marginHorizontal: 24,
     },
     header: {
         alignItems: 'center',
-        marginTop: 40,
+        marginTop: 60,
         marginBottom: 40,
     },
     logoContainer: {
+        marginBottom: 20,
+        shadowColor: "#A855F7",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 15,
+        elevation: 10,
+    },
+    logoGradient: {
         width: 80,
         height: 80,
-        borderRadius: 24,
+        borderRadius: 28, // Squircle-ish
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 16,
-        ...SHADOWS.medium,
+        transform: [{ rotate: '45deg' }],
     },
     appName: {
         fontSize: 32,
         fontWeight: '800',
-        color: '#9333EA', // Darker purple
-        marginBottom: 8,
+        color: '#A855F7',
+        marginBottom: 12,
+        letterSpacing: 0.5,
     },
     tagline: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: '700',
-        color: '#1F2937',
+        color: '#1F2937', // Gray-800
         marginBottom: 4,
     },
     subTagline: {
         fontSize: 16,
-        color: '#4B5563',
+        color: '#4B5563', // Gray-600
         marginBottom: 8,
     },
     microTagline: {
         fontSize: 12,
-        color: '#6B7280',
+        color: '#6B7280', // Gray-500
         letterSpacing: 0.5,
     },
-    content: {
-        flex: 1,
-    },
     cardContainer: {
-        padding: 24,
+        paddingHorizontal: 24,
+        flex: 1,
+        justifyContent: 'center', // Center vertically if space allows, or use scrollview for small screens
+    },
+    card: {
+        backgroundColor: '#fff',
         borderRadius: 32,
-        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+        padding: 24,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 5,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
     },
     roleCard: {
-        borderRadius: 24,
-        backgroundColor: '#fff',
-    },
-    roleCardContent: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+        marginBottom: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    roleCardSelected: {
+        backgroundColor: '#FAF5FF', // Very light purple
+        borderWidth: 2,
     },
     iconContainer: {
         width: 48,
@@ -176,13 +236,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginRight: 16,
     },
-    roleTextContainer: {
+    textContainer: {
         flex: 1,
     },
     roleTitle: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#000',
+        color: '#111',
         marginBottom: 4,
     },
     roleDescription: {
@@ -190,20 +250,39 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         lineHeight: 16,
     },
-    checkCircle: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: COLORS.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
     spacer: {
         height: 24,
     },
-    footer: {
-        paddingVertical: 16,
+    button: {
+        height: 56,
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: "#A855F7",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    buttonDisabled: {
+        shadowOpacity: 0,
+        elevation: 0,
+    },
+    buttonGradient: {
+        flex: 1,
+        justifyContent: 'center',
         alignItems: 'center',
+    },
+    buttonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    footer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 40,
+        marginTop: 20,
     },
     footerText: {
         fontSize: 12,
