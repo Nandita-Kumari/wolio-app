@@ -20,26 +20,26 @@ import {
     ArrowRight,
 } from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
-import GlassCard from '../components/GlassCard';
 import GradientButton from '../components/GradientButton';
 
-const SignupScreen = ({ navigation, route }) => {
+const STEPS = [
+    { key: 'account', label: 'Account', active: true },
+    { key: 'verify', label: 'Verify', active: false },
+    { key: 'profile', label: 'Profile', active: false },
+];
+
+const SignupScreen = ({ navigation }) => {
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [agreeTerms, setAgreeTerms] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
-
-    const role = route?.params?.role ?? 'Student';
 
     const handleCreateAccount = () => {
         setLoading(true);
         setTimeout(() => {
             setLoading(false);
-            navigation.replace('Main');
+            navigation.replace('VerifyEmail', { email: email.trim() || 'user@example.com' });
         }, 1500);
     };
 
@@ -54,47 +54,95 @@ const SignupScreen = ({ navigation, route }) => {
                     <ScrollView
                         style={styles.scrollView}
                         contentContainerStyle={styles.scrollContent}
-                        showsVerticalScrollIndicator={true}
+                        showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
                         keyboardDismissMode="on-drag"
                     >
-                        {/* Top bar: Change Role | Student */}
-                        <View style={styles.topBar}>
-                            <TouchableOpacity
-                                style={styles.changeRoleBtn}
-                                onPress={() => navigation.replace('Onboarding')}
-                            >
-                                <ArrowLeft size={20} color={COLORS.text} />
-                                <Text style={styles.changeRoleText}>Change Role</Text>
-                            </TouchableOpacity>
-                            <View style={styles.rolePill}>
-                                <LinearGradient
-                                    colors={GRADIENTS.primary}
-                                    style={styles.rolePillGradient}
-                                >
-                                    <Text style={styles.rolePillText}>{role}</Text>
-                                </LinearGradient>
-                            </View>
+                        {/* Back */}
+                        <TouchableOpacity
+                            style={styles.backBtn}
+                            onPress={() => navigation.goBack()}
+                            activeOpacity={0.7}
+                        >
+                            <ArrowLeft size={22} color={COLORS.text} />
+                            <Text style={styles.backText}>Back</Text>
+                        </TouchableOpacity>
+
+                        {/* Progress: 1 Account, 2 Verify, 3 Profile */}
+                        <View style={styles.progressWrap}>
+                            {STEPS.map((step, index) => (
+                                <React.Fragment key={step.key}>
+                                    <View style={styles.stepColumn}>
+                                        <View
+                                            style={[
+                                                styles.stepCircle,
+                                                step.active && styles.stepCircleActive,
+                                            ]}
+                                        >
+                                            {step.active && (
+                                                <View style={styles.stepCircleRing} />
+                                            )}
+                                            <Text
+                                                style={[
+                                                    styles.stepNumber,
+                                                    step.active && styles.stepNumberActive,
+                                                ]}
+                                            >
+                                                {index + 1}
+                                            </Text>
+                                        </View>
+                                        <Text
+                                            style={[
+                                                styles.stepLabel,
+                                                step.active && styles.stepLabelActive,
+                                            ]}
+                                        >
+                                            {step.label}
+                                        </Text>
+                                    </View>
+                                    {index < STEPS.length - 1 && (
+                                        <View style={styles.stepConnector} />
+                                    )}
+                                </React.Fragment>
+                            ))}
                         </View>
 
-                        {/* Header: icon + title + subtitle */}
-                        <View style={styles.header}>
-                            <View style={styles.logoWrapper}>
-                                <LinearGradient
-                                    colors={GRADIENTS.primary}
-                                    style={styles.logoContainer}
-                                >
-                                    <Sparkles color="#fff" size={32} />
-                                </LinearGradient>
+                        {/* Branding: WOLIO logo + subtitle */}
+                        <View style={styles.branding}>
+                            <View style={styles.logoRow}>
+                                <View style={styles.logoIconWrap}>
+                                    <LinearGradient
+                                        colors={GRADIENTS.primary}
+                                        style={styles.logoIcon}
+                                    >
+                                        <Sparkles color="#fff" size={28} />
+                                    </LinearGradient>
+                                </View>
+                                <Text style={styles.logoText}>WOLIO</Text>
                             </View>
-                            <Text style={styles.title}>Join the Future</Text>
-                            <Text style={styles.subtitle}>
-                                Start your learning journey today
+                            <Text style={styles.brandingSubtitle}>
+                                Create your learning account
                             </Text>
                         </View>
 
                         {/* Form card */}
-                        <GlassCard style={styles.formCard} intensity={40}>
+                        <View style={styles.formCard}>
+                            <TouchableOpacity
+                                style={styles.googleButton}
+                                activeOpacity={0.8}
+                            >
+                                <View style={styles.googleIcon}>
+                                    <Text style={styles.googleG}>G</Text>
+                                </View>
+                                <Text style={styles.googleButtonText}>Continue with Google</Text>
+                            </TouchableOpacity>
+
+                            <View style={styles.orRow}>
+                                <View style={styles.orLine} />
+                                <Text style={styles.orText}>OR</Text>
+                                <View style={styles.orLine} />
+                            </View>
+
                             <Text style={styles.label}>Full Name</Text>
                             <View style={styles.inputContainer}>
                                 <User
@@ -104,7 +152,7 @@ const SignupScreen = ({ navigation, route }) => {
                                 />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Jordan Smith"
+                                    placeholder="Enter your full name"
                                     placeholderTextColor={COLORS.textSecondary}
                                     value={fullName}
                                     onChangeText={setFullName}
@@ -112,7 +160,7 @@ const SignupScreen = ({ navigation, route }) => {
                                 />
                             </View>
 
-                            <Text style={styles.label}>Email Address</Text>
+                            <Text style={styles.label}>Email</Text>
                             <View style={styles.inputContainer}>
                                 <Mail
                                     color={COLORS.textSecondary}
@@ -121,7 +169,7 @@ const SignupScreen = ({ navigation, route }) => {
                                 />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="jordan@example.com"
+                                    placeholder="Enter your email"
                                     placeholderTextColor={COLORS.textSecondary}
                                     value={email}
                                     onChangeText={setEmail}
@@ -139,7 +187,7 @@ const SignupScreen = ({ navigation, route }) => {
                                 />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="••••••••••"
+                                    placeholder="Enter your password"
                                     placeholderTextColor={COLORS.textSecondary}
                                     value={password}
                                     onChangeText={setPassword}
@@ -150,76 +198,12 @@ const SignupScreen = ({ navigation, route }) => {
                                     hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                                 >
                                     {showPassword ? (
-                                        <EyeOff
-                                            size={20}
-                                            color={COLORS.textSecondary}
-                                        />
+                                        <EyeOff size={20} color={COLORS.textSecondary} />
                                     ) : (
-                                        <Eye
-                                            size={20}
-                                            color={COLORS.textSecondary}
-                                        />
+                                        <Eye size={20} color={COLORS.textSecondary} />
                                     )}
                                 </TouchableOpacity>
                             </View>
-
-                            <Text style={styles.label}>Confirm Password</Text>
-                            <View style={styles.inputContainer}>
-                                <Lock
-                                    color={COLORS.textSecondary}
-                                    size={20}
-                                    style={styles.inputIcon}
-                                />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="••••••••••"
-                                    placeholderTextColor={COLORS.textSecondary}
-                                    value={confirmPassword}
-                                    onChangeText={setConfirmPassword}
-                                    secureTextEntry={!showConfirmPassword}
-                                />
-                                <TouchableOpacity
-                                    onPress={() =>
-                                        setShowConfirmPassword((p) => !p)
-                                    }
-                                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                                >
-                                    {showConfirmPassword ? (
-                                        <EyeOff
-                                            size={20}
-                                            color={COLORS.textSecondary}
-                                        />
-                                    ) : (
-                                        <Eye
-                                            size={20}
-                                            color={COLORS.textSecondary}
-                                        />
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-
-                            <TouchableOpacity
-                                style={styles.termsRow}
-                                onPress={() => setAgreeTerms((a) => !a)}
-                                activeOpacity={0.8}
-                            >
-                                <Text style={styles.termsText}>
-                                    I agree to the{' '}
-                                    <Text
-                                        style={styles.termsLink}
-                                        onPress={(e) => e.stopPropagation()}
-                                    >
-                                        Terms of Service
-                                    </Text>
-                                    {' and '}
-                                    <Text
-                                        style={styles.termsLink}
-                                        onPress={(e) => e.stopPropagation()}
-                                    >
-                                        Privacy Policy
-                                    </Text>
-                                </Text>
-                            </TouchableOpacity>
 
                             <GradientButton
                                 title="Create Account"
@@ -228,42 +212,16 @@ const SignupScreen = ({ navigation, route }) => {
                                 icon={<ArrowRight size={20} color="#fff" />}
                                 style={styles.createButton}
                             />
-                        </GlassCard>
 
-                        {/* OR CONTINUE WITH */}
-                        <View style={styles.dividerRow}>
-                            <View style={styles.dividerLine} />
-                            <Text style={styles.dividerText}>
-                                OR CONTINUE WITH
-                            </Text>
-                            <View style={styles.dividerLine} />
-                        </View>
-
-                        <View style={styles.socialRow}>
-                            <TouchableOpacity
-                                style={styles.socialButton}
-                                activeOpacity={0.8}
-                            >
-                                <Text style={styles.socialButtonText}>Google</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.socialButton}
-                                activeOpacity={0.8}
-                            >
-                                <Text style={styles.socialButtonText}>GitHub</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Footer: Sign in */}
-                        <View style={styles.footer}>
-                            <Text style={styles.footerText}>
-                                Already have an account?{' '}
-                            </Text>
-                            <TouchableOpacity
-                                onPress={() => navigation.replace('Login')}
-                            >
-                                <Text style={styles.signinLink}>Sign in</Text>
-                            </TouchableOpacity>
+                            <View style={styles.signinRow}>
+                                <Text style={styles.signinPrompt}>Already have an account? </Text>
+                                <TouchableOpacity
+                                    onPress={() => navigation.replace('Login')}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={styles.signinLink}>Sign in</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
 
                         <View style={styles.bottomSpacer} />
@@ -275,93 +233,173 @@ const SignupScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    safeArea: {
-        flex: 1,
-    },
-    scrollWrapper: {
-        flex: 1,
-        minHeight: 0,
-    },
-    scrollView: {
-        flex: 1,
-    },
+    container: { flex: 1 },
+    safeArea: { flex: 1 },
+    scrollWrapper: { flex: 1, minHeight: 0 },
+    scrollView: { flex: 1 },
     scrollContent: {
         paddingHorizontal: 24,
         paddingTop: 8,
         paddingBottom: 120,
     },
-    bottomSpacer: {
-        height: 40,
-    },
-    topBar: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    changeRoleBtn: {
+    bottomSpacer: { height: 40 },
+
+    backBtn: {
         flexDirection: 'row',
         alignItems: 'center',
+        marginBottom: 20,
     },
-    changeRoleText: {
+    backText: {
         fontSize: 16,
         color: COLORS.text,
         marginLeft: 8,
         fontWeight: '500',
     },
-    rolePill: {
-        borderRadius: 20,
-        overflow: 'hidden',
-        ...SHADOWS.small,
-    },
-    rolePillGradient: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-    },
-    rolePillText: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    header: {
-        alignItems: 'center',
+
+    progressWrap: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'center',
         marginBottom: 28,
     },
-    logoWrapper: {
-        width: 64,
-        height: 64,
-        transform: [{ rotate: '-15deg' }],
-        marginBottom: 20,
+    stepColumn: {
+        alignItems: 'center',
     },
-    logoContainer: {
-        width: 64,
-        height: 64,
+    stepCircle: {
+        width: 40,
+        height: 40,
         borderRadius: 20,
+        backgroundColor: '#E5E7EB',
         justifyContent: 'center',
         alignItems: 'center',
-        ...SHADOWS.medium,
+        position: 'relative',
     },
-    title: {
+    stepCircleActive: {
+        backgroundColor: COLORS.primary,
+    },
+    stepCircleRing: {
+        position: 'absolute',
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        borderWidth: 2,
+        borderColor: 'rgba(168, 85, 247, 0.35)',
+        top: -4,
+        left: -4,
+    },
+    stepNumber: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#9CA3AF',
+    },
+    stepNumberActive: {
+        color: '#FFFFFF',
+    },
+    stepLabel: {
+        fontSize: 12,
+        color: '#9CA3AF',
+        marginTop: 6,
+        fontWeight: '500',
+    },
+    stepLabelActive: {
+        color: COLORS.primary,
+        fontWeight: '600',
+    },
+    stepConnector: {
+        width: 32,
+        height: 2,
+        backgroundColor: '#E5E7EB',
+        alignSelf: 'flex-start',
+        marginTop: 19,
+        marginHorizontal: 4,
+    },
+
+    branding: {
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    logoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    logoIconWrap: {
+        borderRadius: 12,
+        overflow: 'hidden',
+        marginRight: 10,
+        ...SHADOWS.small,
+    },
+    logoIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    logoText: {
         fontSize: 28,
         fontWeight: '700',
         color: COLORS.primary,
-        marginBottom: 8,
     },
-    subtitle: {
-        fontSize: 16,
+    brandingSubtitle: {
+        fontSize: 15,
         color: COLORS.textSecondary,
         textAlign: 'center',
     },
+
     formCard: {
-        padding: 24,
+        backgroundColor: '#FFFFFF',
         borderRadius: 24,
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        marginBottom: 20,
+        padding: 24,
         ...SHADOWS.medium,
+    },
+    googleButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 52,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        marginBottom: 20,
+    },
+    googleIcon: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    googleG: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#4285F4',
+    },
+    googleButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: COLORS.text,
+    },
+    orRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    orLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: '#E5E7EB',
+    },
+    orText: {
+        fontSize: 13,
+        color: COLORS.textSecondary,
+        marginHorizontal: 14,
+        fontWeight: '500',
     },
     label: {
         fontSize: 14,
@@ -372,17 +410,15 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#FFFFFF',
         borderRadius: 12,
-        marginBottom: 20,
-        paddingHorizontal: 16,
-        height: 56,
+        marginBottom: 18,
+        paddingHorizontal: 14,
+        height: 52,
         borderWidth: 1,
         borderColor: '#E5E7EB',
     },
-    inputIcon: {
-        marginRight: 12,
-    },
+    inputIcon: { marginRight: 12 },
     input: {
         flex: 1,
         height: '100%',
@@ -390,72 +426,23 @@ const styles = StyleSheet.create({
         fontSize: 16,
         paddingVertical: 0,
     },
-    termsRow: {
-        marginBottom: 24,
-    },
-    termsText: {
-        fontSize: 14,
-        color: COLORS.textSecondary,
-        lineHeight: 20,
-    },
-    termsLink: {
-        color: COLORS.primary,
-        fontWeight: '600',
-    },
     createButton: {
-        marginBottom: 0,
-    },
-    dividerRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        marginTop: 4,
         marginBottom: 20,
     },
-    dividerLine: {
-        flex: 1,
-        height: 1,
-        backgroundColor: '#E5E7EB',
-    },
-    dividerText: {
-        fontSize: 12,
-        color: COLORS.textSecondary,
-        fontWeight: '600',
-        letterSpacing: 0.5,
-        marginHorizontal: 12,
-    },
-    socialRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-    socialButton: {
-        width: '48%',
-        height: 52,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...SHADOWS.small,
-    },
-    socialButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: COLORS.text,
-    },
-    footer: {
+    signinRow: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 28,
     },
-    footerText: {
-        color: COLORS.textSecondary,
+    signinPrompt: {
         fontSize: 14,
+        color: COLORS.textSecondary,
     },
     signinLink: {
-        color: COLORS.primary,
-        fontWeight: '700',
         fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.primary,
     },
 });
 

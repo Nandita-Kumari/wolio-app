@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, SafeAreaView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Bell, Trophy, ArrowRight, Play, CheckCircle, Home, Book, Compass, Plus, Clock, Flame, CheckSquare } from 'lucide-react-native';
+import { Zap, Trophy, ArrowRight, Play, Plus, Clock, Flame, CheckCircle, Video, FileText } from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
 import GlassCard from '../components/GlassCard';
 
@@ -33,27 +33,42 @@ const DashboardScreen = () => {
                             </View>
                         </View>
                         <TouchableOpacity style={styles.notificationBtn}>
-                            <LinearGradient colors={['#A855F7', '#EC4899']} style={styles.notificationGradient}>
-                                <Bell size={20} color="#fff" strokeWidth={2.5} />
+                            <LinearGradient colors={GRADIENTS.primary} style={styles.notificationGradient}>
+                                <Zap size={20} color="#fff" strokeWidth={2.5} />
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>
 
-                    {/* Stats Row */}
+                    {/* Stats Row - three equal columns in a row: icon + value on top, label below */}
                     <GlassCard style={styles.statsContainer}>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statLabel}><Clock size={14} color={COLORS.primary} /> 2.7h</Text>
-                            <Text style={styles.statSub}>Study Time</Text>
-                        </View>
-                        <View style={styles.divider} />
-                        <View style={styles.statItem}>
-                            <Text style={styles.statLabel}><Flame size={14} color={COLORS.warning} /> 15</Text>
-                            <Text style={styles.statSub}>Day Streak</Text>
-                        </View>
-                        <View style={styles.divider} />
-                        <View style={styles.statItem}>
-                            <Text style={styles.statLabel}><CheckSquare size={14} color={COLORS.success} /> 0/3</Text>
-                            <Text style={styles.statSub}>Tasks</Text>
+                        <View style={styles.statsRow}>
+                            <View style={styles.statItem}>
+                                <View style={styles.statRow}>
+                                    <View style={[styles.statIconCircle, { backgroundColor: COLORS.primary }]}>
+                                        <Clock size={18} color="#fff" strokeWidth={2.5} />
+                                    </View>
+                                    <Text style={[styles.statValue, { color: COLORS.primary }]}>2.7h</Text>
+                                </View>
+                                <Text style={styles.statSub}>Study Time</Text>
+                            </View>
+                            <View style={styles.statItem}>
+                                <View style={styles.statRow}>
+                                    <View style={[styles.statIconCircle, { backgroundColor: COLORS.warning }]}>
+                                        <Flame size={18} color="#fff" strokeWidth={2.5} />
+                                    </View>
+                                    <Text style={[styles.statValue, { color: COLORS.warning }]}>15</Text>
+                                </View>
+                                <Text style={styles.statSub}>Day Streak</Text>
+                            </View>
+                            <View style={styles.statItem}>
+                                <View style={styles.statRow}>
+                                    <View style={[styles.statIconCircle, { backgroundColor: COLORS.success }]}>
+                                        <CheckCircle size={18} color="#fff" strokeWidth={2.5} />
+                                    </View>
+                                    <Text style={[styles.statValue, { color: COLORS.success }]}>0/3</Text>
+                                </View>
+                                <Text style={styles.statSub}>Tasks</Text>
+                            </View>
                         </View>
                     </GlassCard>
 
@@ -117,31 +132,74 @@ const DashboardScreen = () => {
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+                    <View style={styles.courseCardsColumn}>
                         <GlassCard style={styles.courseCard}>
-                            <View style={[styles.courseImage, { backgroundColor: '#E9D5FF' }]}>
-                                <View style={styles.badge}><Text style={styles.badgeText}>5</Text></View>
-                            </View>
-                            <View style={styles.courseInfo}>
-                                <Text style={styles.courseTitle}>Quantum Mechanics</Text>
-                                <Text style={styles.courseSub}>Chapter 12: Wave Functions</Text>
-                                <View style={styles.courseProgressRow}>
-                                    <View style={styles.courseProgressBarBg}>
-                                        <LinearGradient colors={GRADIENTS.primary} style={[styles.courseProgressBarFill, { width: '60%' }]} />
+                            <View style={styles.courseCardRow}>
+                                <View style={styles.courseImageWrap}>
+                                    <LinearGradient
+                                        colors={['#E9D5FF', '#F5D0FE', '#FFFFFF']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={styles.courseImage}
+                                    />
+                                    <View style={styles.courseBadge}>
+                                        <Text style={styles.courseBadgeText}>5</Text>
                                     </View>
                                 </View>
-                                <View style={styles.courseMeta}>
-                                    <Text style={styles.metaText}>12/18 lessons</Text>
-                                    <Text style={styles.metaText}>28 min left</Text>
+                                <View style={styles.courseInfo}>
+                                    <Text style={[styles.courseTitle, { fontSize: 12 }]}>Quantum Mechanics</Text>
+                                    <Text style={[styles.courseSub, { fontSize: 10 }]}>Chapter 12: Wave Functions</Text>
+                                    <View style={styles.courseProgressRow}>
+                                        <View style={styles.courseProgressBarBg}>
+                                            <LinearGradient colors={GRADIENTS.primary} style={[styles.courseProgressBarFill, { width: '67%' }]} />
+                                        </View>
+                                    </View>
+                                    <View style={styles.courseMeta}>
+                                        <Text style={styles.metaText}>12/18 lessons</Text>
+                                        <Text style={styles.metaText}>28 min left</Text>
+                                    </View>
                                 </View>
+                                <TouchableOpacity style={styles.coursePlayWrap} activeOpacity={0.8}>
+                                    <LinearGradient colors={GRADIENTS.primary} style={styles.coursePlayBtn}>
+                                        <Play size={15} color="#fff" fill="#fff" />
+                                    </LinearGradient>
+                                </TouchableOpacity>
                             </View>
-                            <TouchableOpacity style={styles.playButton}>
-                                <LinearGradient colors={GRADIENTS.primary} style={styles.playGradient}>
-                                    <Play size={20} color="#fff" fill="#fff" />
-                                </LinearGradient>
-                            </TouchableOpacity>
                         </GlassCard>
-                    </ScrollView>
+                        <GlassCard style={styles.courseCard}>
+                            <View style={styles.courseCardRow}>
+                                <View style={styles.courseImageWrap}>
+                                    <LinearGradient
+                                        colors={['#E9D5FF', '#F5D0FE', '#FFFFFF']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={styles.courseImage}
+                                    />
+                                    <View style={styles.courseBadge}>
+                                        <Text style={styles.courseBadgeText}>5</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.courseInfo}>
+                                    <Text style={[styles.courseTitle, { fontSize: 12 }]}>Quantum Mechanics</Text>
+                                    <Text style={[styles.courseSub, { fontSize: 10 }]}>Chapter 12: Wave Functions</Text>
+                                    <View style={styles.courseProgressRow}>
+                                        <View style={styles.courseProgressBarBg}>
+                                            <LinearGradient colors={GRADIENTS.primary} style={[styles.courseProgressBarFill, { width: '67%' }]} />
+                                        </View>
+                                    </View>
+                                    <View style={styles.courseMeta}>
+                                        <Text style={styles.metaText}>12/18 lessons</Text>
+                                        <Text style={styles.metaText}>28 min left</Text>
+                                    </View>
+                                </View>
+                                <TouchableOpacity style={styles.coursePlayWrap} activeOpacity={0.8}>
+                                    <LinearGradient colors={GRADIENTS.primary} style={styles.coursePlayBtn}>
+                                        <Play size={15} color="#fff" fill="#fff" />
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </View>
+                        </GlassCard>
+                    </View>
 
                     {/* Today's Tasks */}
                     <View style={styles.sectionHeader}>
@@ -158,7 +216,6 @@ const DashboardScreen = () => {
                     </View>
 
                     <GlassCard style={styles.taskCard}>
-                        {/* Task 1 */}
                         <View style={styles.taskRow}>
                             <TouchableOpacity style={styles.checkbox} />
                             <View style={[styles.taskIcon, { backgroundColor: '#F3E8FF' }]}>
@@ -176,9 +233,43 @@ const DashboardScreen = () => {
                                 <Text style={[styles.priorityText, { color: '#EF4444' }]}>HIGH</Text>
                             </View>
                         </View>
+                        <View style={[styles.taskRow, styles.taskRowBorder]}>
+                            <TouchableOpacity style={styles.checkbox} />
+                            <View style={[styles.taskIcon, { backgroundColor: '#F3E8FF' }]}>
+                                <Video size={18} color={COLORS.primary} />
+                            </View>
+                            <View style={styles.taskContent}>
+                                <Text style={styles.taskTitle}>Watch Calculus Lecture</Text>
+                                <View style={styles.taskMeta}>
+                                    <Clock size={12} color={COLORS.textSecondary} />
+                                    <Text style={styles.taskTime}>in 4 hours</Text>
+                                    <Text style={[styles.taskTag, { color: COLORS.primary }]}>• Calculus</Text>
+                                </View>
+                            </View>
+                            <View style={[styles.priorityBadge, { backgroundColor: '#FFEDD5' }]}>
+                                <Text style={[styles.priorityText, { color: '#EA580C' }]}>MEDIUM</Text>
+                            </View>
+                        </View>
+                        <View style={[styles.taskRow, styles.taskRowBorder]}>
+                            <TouchableOpacity style={styles.checkbox} />
+                            <View style={[styles.taskIcon, { backgroundColor: '#F3E8FF' }]}>
+                                <FileText size={18} color={COLORS.primary} />
+                            </View>
+                            <View style={styles.taskContent}>
+                                <Text style={styles.taskTitle}>Submit Lab Report</Text>
+                                <View style={styles.taskMeta}>
+                                    <Clock size={12} color={COLORS.textSecondary} />
+                                    <Text style={styles.taskTime}>tomorrow</Text>
+                                    <Text style={[styles.taskTag, { color: COLORS.primary }]}>• Chemistry</Text>
+                                </View>
+                            </View>
+                            <View style={[styles.priorityBadge, { backgroundColor: '#D1FAE5' }]}>
+                                <Text style={[styles.priorityText, { color: '#059669' }]}>LOW</Text>
+                            </View>
+                        </View>
                     </GlassCard>
 
-                    <View style={{ height: 100 }} />
+                    <View style={{ height: 120 }} />
                     </ScrollView>
                 </View>
             </SafeAreaView>
@@ -253,30 +344,41 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     statsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        padding: 16,
         marginBottom: 24,
         backgroundColor: '#fff',
     },
-    statItem: {
+    statsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        flex: 1,
     },
-    statLabel: {
-        fontSize: 16,
+    statItem: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    statRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 6,
+    },
+    statIconCircle: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 6,
+    },
+    statValue: {
+        fontSize: 17,
         fontWeight: '700',
-        color: COLORS.text,
-        marginBottom: 4,
     },
     statSub: {
         fontSize: 12,
         color: COLORS.textSecondary,
-    },
-    divider: {
-        width: 1,
-        height: '100%',
-        backgroundColor: '#E5E7EB',
+        textAlign: 'center',
     },
     chartCard: {
         padding: 20,
@@ -414,65 +516,73 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    horizontalScroll: {
+    courseCardsColumn: {
         marginBottom: 24,
-        overflow: 'visible',
     },
     courseCard: {
-        width: 300,
-        padding: 16,
+        width: '100%',
+        marginBottom: 12,
         backgroundColor: '#fff',
+        ...SHADOWS.medium,
+    },
+    courseCardRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginRight: 16,
+        padding: 14,
+    },
+    courseImageWrap: {
+        position: 'relative',
+        marginRight: 14,
     },
     courseImage: {
-        width: 60,
-        height: 60,
-        borderRadius: 12,
-        marginRight: 16,
+        width: 72,
+        height: 72,
+        borderRadius: 14,
     },
-    badge: {
+    courseBadge: {
         position: 'absolute',
-        top: -4,
-        right: -4,
+        top: -6,
+        right: -6,
         backgroundColor: COLORS.warning,
-        width: 16,
-        height: 16,
-        borderRadius: 8,
+        minWidth: 22,
+        height: 22,
+        borderRadius: 11,
         justifyContent: 'center',
         alignItems: 'center',
+        paddingHorizontal: 6,
     },
-    badgeText: {
+    courseBadgeText: {
         color: '#fff',
-        fontSize: 10,
+        fontSize: 12,
         fontWeight: '700',
     },
     courseInfo: {
         flex: 1,
+        minWidth: 0,
     },
     courseTitle: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: '700',
         color: COLORS.text,
+        marginBottom: 2,
     },
     courseSub: {
-        fontSize: 12,
+        fontSize: 8,
         color: COLORS.textSecondary,
         marginBottom: 8,
     },
     courseProgressRow: {
-        marginBottom: 8,
+        marginBottom: 6,
     },
     courseProgressBarBg: {
-        height: 4,
+        height: 5,
         backgroundColor: '#F3E8FF',
-        borderRadius: 2,
+        borderRadius: 3,
         width: '100%',
     },
     courseProgressBarFill: {
-        height: 4,
-        borderRadius: 2,
+        height: 5,
+        borderRadius: 3,
     },
     courseMeta: {
         flexDirection: 'row',
@@ -482,15 +592,20 @@ const styles = StyleSheet.create({
         fontSize: 10,
         color: COLORS.textSecondary,
     },
-    playButton: {
-        marginLeft: 12,
+    coursePlayWrap: {
+        marginLeft: 10,
     },
-    playGradient: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+    coursePlayBtn: {
+        width: 34,
+        height: 34,
+        borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        elevation: 6,
     },
     taskCard: {
         padding: 16,
@@ -500,6 +615,12 @@ const styles = StyleSheet.create({
     taskRow: {
         flexDirection: 'row',
         alignItems: 'center',
+    },
+    taskRowBorder: {
+        borderTopWidth: 1,
+        borderTopColor: '#F3F4F6',
+        marginTop: 12,
+        paddingTop: 12,
     },
     checkbox: {
         width: 20,

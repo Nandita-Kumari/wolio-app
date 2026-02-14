@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
@@ -10,64 +10,93 @@ import {
     Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Search, Sparkles, Flame, Clock, Star } from 'lucide-react-native';
+import {
+    Search,
+    Filter,
+    Monitor,
+    Users,
+    Zap,
+    TrendingUp,
+    BookOpen,
+    Palette,
+    Music,
+    Code,
+    MessageCircle,
+    ChevronRight,
+    Play,
+    Heart,
+    Star,
+    Clock,
+} from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
 import GlassCard from '../components/GlassCard';
 import GradientButton from '../components/GradientButton';
 
 const { width } = Dimensions.get('window');
+const CARD_GAP = 12;
+const GRID_PADDING = 24;
+const categoryCardWidth = (width - GRID_PADDING * 2 - CARD_GAP) / 2;
 
-const trendingCourses = [
-    { id: 1, title: 'Astrophysics Basics', language: 'Physics', change: '+120%' },
-    { id: 2, title: 'Creative Writing', language: 'English', change: '+100%' },
-    { id: 3, title: 'Machine Learning', language: 'Technology', change: '+80%' },
+const ORANGE_ACCENT = '#F97316';
+
+const trendingList = [
+    { id: 1, title: 'Astrophysics Basics', category: 'Physics', change: '+120%' },
+    { id: 2, title: 'Creative Writing', category: 'English', change: '+100%' },
+    { id: 3, title: 'Machine Learning', category: 'Technology', change: '+80%' },
 ];
 
 const categories = [
-    { id: 1, title: 'Quantum Physics', count: 12, color: '#A855F7' },
-    { id: 2, title: 'Digital Art', count: 8, color: '#EC4899' },
-    { id: 3, title: 'Music Theory', count: 9, color: '#38BDF8' },
-    { id: 4, title: 'Programming', count: 16, color: '#22C55E' },
+    { id: 1, title: 'Quantum Phy', count: 12, icon: BookOpen, badge: true },
+    { id: 2, title: 'Digital Art', count: 8, icon: Palette, badge: false },
+    { id: 3, title: 'Music', count: 9, icon: Music, badge: true },
+    { id: 4, title: 'Programming', count: 16, icon: Code, badge: false },
+    { id: 5, title: 'Languages', count: 14, icon: MessageCircle, badge: false },
+    { id: 6, title: 'Biology', count: 7, icon: BookOpen, badge: true },
 ];
 
 const featuredCourses = [
     {
         id: 1,
         title: 'Quantum Computing',
-        tag: 'Physics',
-        level: 'Advanced',
-        duration: '6 weeks',
+        instructor: 'Dr. Juan Chloe',
+        tags: [{ label: 'Physics', color: '#A855F7' }, { label: 'Advanced', color: '#EF4444' }],
+        duration: '8 weeks',
         lessons: '42 lessons',
         students: '2.4k',
-        badge: 'TRENDING',
+        rating: '4.9',
+        badge: 'BESTSELLER',
     },
     {
         id: 2,
         title: 'Digital Painting',
-        tag: 'Design',
-        level: 'Intermediate',
+        instructor: 'Jane Smith',
+        tags: [{ label: 'Design', color: '#A855F7' }, { label: 'Intermediate', color: '#F59E0B' }],
         duration: '4 weeks',
         lessons: '28 lessons',
         students: '1.8k',
-        badge: 'NEW',
+        rating: '4.8',
+        badge: null,
     },
     {
         id: 3,
         title: 'Music Production',
-        tag: 'Music',
-        level: 'Beginner',
+        instructor: 'Alex Rivera',
+        tags: [{ label: 'Music', color: '#A855F7' }, { label: 'Beginner', color: '#22C55E' }],
         duration: '5 weeks',
         lessons: '35 lessons',
         students: '3.2k',
+        rating: '4.9',
         badge: 'BESTSELLER',
     },
 ];
 
 const ExploreScreen = () => {
+    const [selectedCategoryId, setSelectedCategoryId] = useState(2);
+
     return (
         <View style={styles.container}>
             <LinearGradient
-                colors={[COLORS.background, '#F3E8FF', '#FFFFFF']}
+                colors={[COLORS.background, '#F8F5FF', '#FFFFFF']}
                 style={StyleSheet.absoluteFill}
             />
             <SafeAreaView style={styles.safeArea}>
@@ -75,185 +104,258 @@ const ExploreScreen = () => {
                     <ScrollView
                         style={styles.scrollView}
                         contentContainerStyle={styles.scrollContent}
-                        showsVerticalScrollIndicator={true}
+                        showsVerticalScrollIndicator={false}
                     >
-                    {/* Header */}
-                    <View style={styles.header}>
-                        <View>
-                            <Text style={styles.headerLabel}>Explore</Text>
-                            <Text style={styles.headerTitle}>Discover your next adventure</Text>
-                        </View>
-                        <TouchableOpacity style={styles.sparklesButton}>
-                            <LinearGradient
-                                colors={GRADIENTS.primary}
-                                style={styles.sparklesGradient}
-                            >
-                                <Sparkles size={20} color="#fff" />
-                            </LinearGradient>
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Search */}
-                    <View style={styles.searchRow}>
-                        <View style={styles.searchContainer}>
-                            <Search size={18} color={COLORS.textSecondary} style={styles.searchIcon} />
-                            <TextInput
-                                placeholder="Search courses, topics, instructors..."
-                                placeholderTextColor={COLORS.textSecondary}
-                                style={styles.searchInput}
-                            />
-                        </View>
-                    </View>
-
-                    {/* Quick Stats */}
-                    <View style={styles.statsRow}>
-                        <GlassCard style={styles.statCard}>
-                            <Text style={styles.statValue}>120+</Text>
-                            <Text style={styles.statLabel}>Courses</Text>
-                        </GlassCard>
-                        <GlassCard style={styles.statCard}>
-                            <Text style={styles.statValue}>10k+</Text>
-                            <Text style={styles.statLabel}>Learners</Text>
-                        </GlassCard>
-                        <GlassCard style={styles.statCard}>
-                            <Text style={styles.statValue}>8</Text>
-                            <Text style={styles.statLabel}>New today</Text>
-                        </GlassCard>
-                    </View>
-
-                    {/* Trending Now */}
-                    <View style={styles.sectionHeader}>
-                        <View style={styles.sectionTitleRow}>
-                            <View style={styles.indicator} />
-                            <Text style={styles.sectionTitle}>Trending Now</Text>
-                        </View>
-                        <Text style={styles.sectionAction}>View All →</Text>
-                    </View>
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.trendingScroll}
-                    >
-                        {trendingCourses.map((course) => (
-                            <LinearGradient
-                                key={course.id}
-                                colors={['#F97316', '#EC4899', '#8B5CF6']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                style={styles.trendingCard}
-                            >
-                                <View style={styles.trendingHeader}>
-                                    <View style={styles.trendingPill}>
-                                        <Flame size={14} color="#F97316" />
-                                        <Text style={styles.trendingPillText}>Hot</Text>
-                                    </View>
-                                    <View style={styles.trendingChangePill}>
-                                        <Text style={styles.trendingChangeText}>{course.change}</Text>
-                                    </View>
-                                </View>
-                                <Text style={styles.trendingTitle}>{course.title}</Text>
-                                <Text style={styles.trendingSubtitle}>{course.language}</Text>
-                            </LinearGradient>
-                        ))}
-                    </ScrollView>
-
-                    {/* Browse Categories */}
-                    <View style={styles.sectionHeader}>
-                        <View style={styles.sectionTitleRow}>
-                            <View style={styles.indicator} />
-                            <Text style={styles.sectionTitle}>Browse Categories</Text>
-                        </View>
-                        <Text style={styles.sectionAction}>See All →</Text>
-                    </View>
-                    <View style={styles.categoriesGrid}>
-                        {categories.map((category) => (
-                            <GlassCard key={category.id} style={styles.categoryCard}>
-                                <View
-                                    style={[
-                                        styles.categoryIcon,
-                                        { backgroundColor: category.color },
-                                    ]}
+                        {/* Header: logo left, title + subtitle right */}
+                        <View style={styles.header}>
+                            <TouchableOpacity style={styles.logoButton} activeOpacity={0.8}>
+                                <LinearGradient
+                                    colors={GRADIENTS.primary}
+                                    style={styles.logoGradient}
                                 >
-                                    <BookOpenIcon />
-                                </View>
-                                <Text style={styles.categoryTitle}>{category.title}</Text>
-                                <Text style={styles.categoryCount}>{category.count} courses</Text>
-                            </GlassCard>
-                        ))}
-                    </View>
-
-                    {/* Featured Courses */}
-                    <View style={styles.sectionHeader}>
-                        <View style={styles.sectionTitleRow}>
-                            <View style={styles.indicator} />
-                            <Text style={styles.sectionTitle}>Featured Courses</Text>
+                                    <Text style={styles.logoText}>W</Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                            <View style={styles.headerTextWrap}>
+                                <Text style={styles.headerTitle}>Explore</Text>
+                                <Text style={styles.headerSubtitle}>Discover your next adventure.</Text>
+                            </View>
                         </View>
-                        <Text style={styles.sectionAction}>See All →</Text>
-                    </View>
 
-                    {featuredCourses.map((course) => (
-                        <GlassCard key={course.id} style={styles.featuredCard}>
-                            <View style={styles.featuredTopRow}>
-                                <View style={styles.featuredTagRow}>
-                                    <View style={styles.tagPill}>
-                                        <Text style={styles.tagText}>{course.tag}</Text>
+                        {/* Search bar with filter */}
+                        <View style={styles.searchRow}>
+                            <View style={styles.searchContainer}>
+                                <Search size={20} color={COLORS.textSecondary} style={styles.searchIcon} />
+                                <TextInput
+                                    placeholder="Search courses, topics, instructors..."
+                                    placeholderTextColor={COLORS.textSecondary}
+                                    style={styles.searchInput}
+                                />
+                                <TouchableOpacity style={styles.filterButton} activeOpacity={0.8}>
+                                    <LinearGradient
+                                        colors={GRADIENTS.primary}
+                                        style={styles.filterGradient}
+                                    >
+                                        <Filter size={18} color="#fff" />
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* Stats: icon on top, number, uppercase label */}
+                        <View style={styles.statsRow}>
+                            {[
+                                { value: '120+', label: 'COURSES', icon: Monitor },
+                                { value: '10k+', label: 'LEARNERS', icon: Users },
+                                { value: '8', label: 'NEW TODAY', icon: Zap },
+                            ].map((stat, i) => (
+                                <View key={i} style={styles.statCard}>
+                                    <View style={styles.statIconWrap}>
+                                        <LinearGradient
+                                            colors={GRADIENTS.primary}
+                                            style={styles.statIconGradient}
+                                        >
+                                            <stat.icon size={20} color="#fff" />
+                                        </LinearGradient>
                                     </View>
-                                    <View style={styles.levelPill}>
-                                        <Text style={styles.levelText}>{course.level}</Text>
+                                    <Text style={styles.statValue}>{stat.value}</Text>
+                                    <Text style={styles.statLabel}>{stat.label}</Text>
+                                </View>
+                            ))}
+                        </View>
+
+                        {/* Trending Now: orange line + chart icon, single white list card */}
+                        <View style={styles.sectionHeader}>
+                            <View style={styles.sectionTitleRow}>
+                                <View style={[styles.indicator, { backgroundColor: ORANGE_ACCENT }]} />
+                                <Text style={styles.sectionTitle}>Trending Now</Text>
+                            </View>
+                            <View style={styles.trendingUpIcon}>
+                                <TrendingUp size={20} color={ORANGE_ACCENT} />
+                            </View>
+                        </View>
+                        <View style={styles.trendingCard}>
+                            {trendingList.map((item, index) => (
+                                <TouchableOpacity
+                                    key={item.id}
+                                    style={[
+                                        styles.trendingRow,
+                                        index < trendingList.length - 1 && styles.trendingRowBorder,
+                                    ]}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={styles.trendingNumberWrap}>
+                                        <LinearGradient
+                                            colors={GRADIENTS.primary}
+                                            style={styles.trendingNumberGradient}
+                                        >
+                                            <Text style={styles.trendingNumber}>{index + 1}</Text>
+                                        </LinearGradient>
+                                    </View>
+                                    <View style={styles.trendingContent}>
+                                        <Text style={styles.trendingTitle}>{item.title}</Text>
+                                        <Text style={styles.trendingCategory}>{item.category}</Text>
+                                    </View>
+                                    <Text style={styles.trendingChange}>{item.change}</Text>
+                                    <ChevronRight size={18} color={COLORS.textSecondary} />
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {/* Browse Categories: orange line, 2x3 grid, active has outer glow */}
+                        <View style={styles.sectionHeader}>
+                            <View style={styles.sectionTitleRow}>
+                                <View style={[styles.indicator, { backgroundColor: ORANGE_ACCENT }]} />
+                                <Text style={styles.sectionTitle}>Browse Categories</Text>
+                            </View>
+                        </View>
+                        <View style={styles.categoriesGrid}>
+                            {categories.map((cat) => {
+                                const isActive = selectedCategoryId === cat.id;
+                                const IconComponent = cat.icon;
+                                return (
+                                    <TouchableOpacity
+                                        key={cat.id}
+                                        style={styles.categoryCardWrap}
+                                        onPress={() => setSelectedCategoryId(cat.id)}
+                                        activeOpacity={0.8}
+                                    >
+                                        {isActive && (
+                                            <View style={styles.categoryActiveOuter} pointerEvents="none" />
+                                        )}
+                                        <View style={[styles.categoryCard, isActive && styles.categoryCardActive]}>
+                                            {cat.badge && (
+                                                <View style={styles.categoryBadge}>
+                                                    <Text style={styles.categoryBadgeText}>1</Text>
+                                                </View>
+                                            )}
+                                            <View style={styles.categoryIconWrap}>
+                                                <LinearGradient
+                                                    colors={GRADIENTS.primary}
+                                                    style={styles.categoryIconGradient}
+                                                >
+                                                    <IconComponent size={22} color="#fff" />
+                                                </LinearGradient>
+                                            </View>
+                                            <Text style={styles.categoryTitle} numberOfLines={1}>
+                                                {cat.title}
+                                            </Text>
+                                            <Text style={styles.categoryCount}>{cat.count} courses</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+
+                        {/* Featured Courses: image header, badge, instructor, tags, stats, Enroll + heart */}
+                        <View style={styles.sectionHeader}>
+                            <View style={styles.sectionTitleRow}>
+                                <View style={[styles.indicator, { backgroundColor: ORANGE_ACCENT }]} />
+                                <Text style={styles.sectionTitle}>Featured Courses</Text>
+                            </View>
+                            <TouchableOpacity style={styles.seeAllRow}>
+                                <Text style={styles.seeAllText}>See All</Text>
+                                <ChevronRight size={18} color={COLORS.primary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {featuredCourses.map((course) => (
+                            <View key={course.id} style={styles.featuredCard}>
+                                <View style={styles.featuredImageWrap}>
+                                    <LinearGradient
+                                        colors={['#A855F7', '#C084FC', '#EC4899']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={styles.featuredImage}
+                                    />
+                                    {course.badge && (
+                                        <View style={styles.featuredBadge}>
+                                            <Text style={styles.featuredBadgeText}>{course.badge}</Text>
+                                        </View>
+                                    )}
+                                    <View style={styles.ratingBadge}>
+                                        <Star size={12} color="#FBBF24" fill="#FBBF24" />
+                                        <Text style={styles.ratingBadgeText}>{course.rating}</Text>
                                     </View>
                                 </View>
-                                <View style={styles.ratingRow}>
-                                    <Star size={14} color="#FBBF24" fill="#FBBF24" />
-                                    <Text style={styles.ratingText}>4.8</Text>
+                                <View style={styles.featuredBody}>
+                                    <Text style={styles.featuredTitle}>{course.title}</Text>
+                                    <Text style={styles.featuredInstructor}>{course.instructor}</Text>
+                                    <View style={styles.tagsRow}>
+                                        {course.tags.map((tag, i) => (
+                                            <View
+                                                key={i}
+                                                style={[styles.tagPill, { backgroundColor: tag.color + '22' }]}
+                                            >
+                                                <Text style={[styles.tagText, { color: tag.color }]}>
+                                                    {tag.label}
+                                                </Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                    <View style={styles.featuredMetaRow}>
+                                        <View style={styles.metaItem}>
+                                            <Clock size={14} color={COLORS.textSecondary} />
+                                            <Text style={styles.metaText}>{course.duration}</Text>
+                                        </View>
+                                        <View style={styles.metaItem}>
+                                            <BookOpen size={14} color={COLORS.textSecondary} />
+                                            <Text style={styles.metaText}>{course.lessons}</Text>
+                                        </View>
+                                        <View style={styles.metaItem}>
+                                            <Users size={14} color={COLORS.textSecondary} />
+                                            <Text style={styles.metaText}>{course.students}</Text>
+                                        </View>
+                                    </View>
+                                    <View style={styles.featuredFooter}>
+                                        <TouchableOpacity
+                                            style={styles.enrollButtonWrap}
+                                            activeOpacity={0.8}
+                                        >
+                                            <LinearGradient
+                                                colors={GRADIENTS.primary}
+                                                style={styles.enrollGradient}
+                                            >
+                                                <Play size={18} color="#fff" fill="#fff" />
+                                                <Text style={styles.enrollText}>Enroll Now</Text>
+                                            </LinearGradient>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={styles.heartButton}>
+                                            <Heart size={22} color={COLORS.textSecondary} />
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
                             </View>
+                        ))}
 
-                            <Text style={styles.featuredTitle}>{course.title}</Text>
-
-                            <View style={styles.featuredMetaRow}>
-                                <View style={styles.metaItem}>
-                                    <Clock size={14} color={COLORS.textSecondary} />
-                                    <Text style={styles.metaText}>{course.duration}</Text>
+                        {/* Recommended for You: star icon, bold purple keywords */}
+                        <View style={styles.recommendedSection}>
+                            <View style={styles.recommendedTitleRow}>
+                                <View style={styles.starIconWrap}>
+                                    <Star size={20} color={COLORS.primary} fill={COLORS.primary} />
                                 </View>
-                                <Text style={styles.metaText}>{course.lessons}</Text>
-                                <Text style={styles.metaText}>{course.students} learners</Text>
+                                <Text style={styles.recommendedLabel}>Recommended for You</Text>
                             </View>
-
-                            <View style={styles.featuredFooter}>
-                                <View style={styles.badgePill}>
-                                    <Text style={styles.badgeText}>{course.badge}</Text>
-                                </View>
+                            <Text style={styles.recommendedText}>
+                                Based on your interests in{' '}
+                                <Text style={styles.recommendedBold}>Physics</Text> and{' '}
+                                <Text style={styles.recommendedBold}>Mathematics</Text>, we've curated
+                                these courses just for you.
+                            </Text>
+                            <View style={styles.recommendedActions}>
+                                <TouchableOpacity style={styles.outlineButton} activeOpacity={0.8}>
+                                    <Text style={styles.outlineButtonText}>View All</Text>
+                                </TouchableOpacity>
                                 <GradientButton
-                                    title="Enroll Now"
+                                    title="Customize"
                                     onPress={() => {}}
-                                    style={styles.enrollButton}
-                                    textStyle={styles.enrollText}
+                                    style={styles.customizeButton}
+                                    textStyle={styles.customizeText}
                                 />
                             </View>
-                        </GlassCard>
-                    ))}
-
-                    {/* Recommended */}
-                    <GlassCard style={styles.recommendedCard}>
-                        <Text style={styles.recommendedLabel}>Recommended for You</Text>
-                        <Text style={styles.recommendedText}>
-                            Based on your interests in Physics and Mathematics, we've curated these
-                            courses just for you.
-                        </Text>
-                        <View style={styles.recommendedActions}>
-                            <TouchableOpacity style={styles.outlineButton}>
-                                <Text style={styles.outlineButtonText}>View All</Text>
-                            </TouchableOpacity>
-                            <GradientButton
-                                title="Customize"
-                                onPress={() => {}}
-                                style={styles.customizeButton}
-                                textStyle={styles.customizeText}
-                            />
                         </View>
-                    </GlassCard>
 
-                    <View style={{ height: 100 }} />
+                        <View style={{ height: 100 }} />
                     </ScrollView>
                 </View>
             </SafeAreaView>
@@ -261,81 +363,53 @@ const ExploreScreen = () => {
     );
 };
 
-const BookOpenIcon = () => (
-    <View>
-        {/* Simple placeholder icon using shapes to avoid extra imports */}
-        <View style={styles.bookIconPage} />
-        <View style={[styles.bookIconPage, { opacity: 0.7 }]} />
-    </View>
-);
-
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    safeArea: {
-        flex: 1,
-    },
-    scrollWrapper: {
-        flex: 1,
-        minHeight: 0,
-    },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        padding: 24,
-    },
+    container: { flex: 1 },
+    safeArea: { flex: 1 },
+    scrollWrapper: { flex: 1, minHeight: 0 },
+    scrollView: { flex: 1 },
+    scrollContent: { padding: GRID_PADDING },
+
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 24,
+        marginBottom: 20,
     },
-    headerLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: COLORS.textSecondary,
-        marginBottom: 4,
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: COLORS.text,
-    },
-    sparklesButton: {
-        ...SHADOWS.medium,
-        borderRadius: 20,
-        overflow: 'hidden',
-    },
-    sparklesGradient: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+    logoButton: { borderRadius: 12, overflow: 'hidden', ...SHADOWS.small },
+    logoGradient: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    searchRow: {
-        marginBottom: 20,
-    },
+    logoText: { fontSize: 22, fontWeight: '800', color: '#fff' },
+    headerTextWrap: { marginLeft: 14, flex: 1 },
+    headerTitle: { fontSize: 26, fontWeight: '700', color: COLORS.text, marginBottom: 2 },
+    headerSubtitle: { fontSize: 14, color: COLORS.textSecondary },
+
+    searchRow: { marginBottom: 20 },
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
         borderRadius: 16,
-        paddingHorizontal: 16,
+        paddingHorizontal: 14,
         height: 52,
         borderWidth: 1,
         borderColor: '#E5E7EB',
     },
-    searchIcon: {
-        marginRight: 8,
+    searchIcon: { marginRight: 10 },
+    searchInput: { flex: 1, fontSize: 15, color: COLORS.text, paddingVertical: 0 },
+    filterButton: { borderRadius: 20, overflow: 'hidden', marginLeft: 8 },
+    filterGradient: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    searchInput: {
-        flex: 1,
-        fontSize: 14,
-        color: COLORS.text,
-    },
+
     statsRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -344,275 +418,215 @@ const styles = StyleSheet.create({
     statCard: {
         flex: 1,
         backgroundColor: '#FFFFFF',
+        borderRadius: 16,
         paddingVertical: 16,
-        paddingHorizontal: 12,
+        paddingHorizontal: 10,
         marginHorizontal: 4,
-        alignItems: 'flex-start',
+        alignItems: 'center',
+        ...SHADOWS.small,
     },
-    statValue: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: COLORS.text,
-        marginBottom: 4,
+    statIconWrap: { marginBottom: 10 },
+    statIconGradient: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    statLabel: {
-        fontSize: 12,
-        color: COLORS.textSecondary,
-    },
+    statValue: { fontSize: 20, fontWeight: '700', color: COLORS.text, marginBottom: 2 },
+    statLabel: { fontSize: 11, color: COLORS.textSecondary, fontWeight: '500' },
+
     sectionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 12,
-        marginTop: 8,
+        marginTop: 4,
     },
-    sectionTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    indicator: {
-        width: 4,
-        height: 16,
-        backgroundColor: COLORS.secondary,
-        borderRadius: 2,
-        marginRight: 8,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: COLORS.text,
-    },
-    sectionAction: {
-        fontSize: 12,
-        color: COLORS.primary,
-        fontWeight: '600',
-    },
-    trendingScroll: {
-        paddingVertical: 8,
-        paddingRight: 24,
-    },
+    sectionTitleRow: { flexDirection: 'row', alignItems: 'center' },
+    indicator: { width: 4, height: 18, borderRadius: 2, marginRight: 8 },
+    sectionTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text },
+    trendingUpIcon: {},
+
     trendingCard: {
-        width: width * 0.7,
-        borderRadius: 24,
-        padding: 16,
-        marginRight: 16,
-        ...SHADOWS.medium,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        marginBottom: 24,
+        ...SHADOWS.small,
     },
-    trendingHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    trendingPill: {
+    trendingRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 999,
+        paddingVertical: 14,
     },
-    trendingPillText: {
-        fontSize: 12,
-        fontWeight: '600',
-        marginLeft: 4,
-        color: '#EA580C',
+    trendingRowBorder: {
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
     },
-    trendingChangePill: {
-        backgroundColor: 'rgba(15,118,110,0.12)',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 999,
+    trendingNumberWrap: { marginRight: 12 },
+    trendingNumberGradient: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    trendingChangeText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#ECFEFF',
-    },
-    trendingTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#FFFFFF',
-        marginBottom: 4,
-    },
-    trendingSubtitle: {
-        fontSize: 13,
-        color: 'rgba(255,255,255,0.8)',
-    },
+    trendingNumber: { fontSize: 14, fontWeight: '700', color: '#fff' },
+    trendingContent: { flex: 1 },
+    trendingTitle: { fontSize: 15, fontWeight: '600', color: COLORS.text },
+    trendingCategory: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
+    trendingChange: { fontSize: 13, fontWeight: '600', color: '#22C55E', marginRight: 8 },
+
     categoriesGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
         marginBottom: 24,
     },
-    categoryCard: {
-        width: (width - 48 - 16) / 2,
-        marginBottom: 16,
-        padding: 16,
-        backgroundColor: '#FFFFFF',
+    categoryCardWrap: {
+        width: categoryCardWidth,
+        marginBottom: CARD_GAP,
+        position: 'relative',
     },
-    categoryIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: 12,
+    categoryActiveOuter: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 20,
+        backgroundColor: 'rgba(232, 213, 255, 0.5)',
+        borderWidth: 2,
+        borderColor: 'rgba(168, 85, 247, 0.4)',
+        margin: -4,
+        zIndex: 0,
+    },
+    categoryCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        padding: 16,
+        alignItems: 'center',
+        minHeight: 120,
+        ...SHADOWS.small,
+        zIndex: 1,
+    },
+    categoryCardActive: {
+        borderWidth: 1.5,
+        borderColor: COLORS.primary,
+    },
+    categoryBadge: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: COLORS.secondary,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 12,
+        zIndex: 2,
     },
-    categoryTitle: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: COLORS.text,
-        marginBottom: 4,
+    categoryBadgeText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+    categoryIconWrap: { marginBottom: 10 },
+    categoryIconGradient: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    categoryCount: {
-        fontSize: 12,
-        color: COLORS.textSecondary,
-    },
+    categoryTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text, marginBottom: 2 },
+    categoryCount: { fontSize: 12, color: COLORS.textSecondary },
+
+    seeAllRow: { flexDirection: 'row', alignItems: 'center' },
+    seeAllText: { fontSize: 14, fontWeight: '600', color: COLORS.primary, marginRight: 2 },
+
     featuredCard: {
-        marginBottom: 16,
-        padding: 16,
         backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        overflow: 'hidden',
+        marginBottom: 20,
+        ...SHADOWS.medium,
     },
-    featuredTopRow: {
+    featuredImageWrap: { position: 'relative', height: 140 },
+    featuredImage: { width: '100%', height: '100%' },
+    featuredBadge: {
+        position: 'absolute',
+        top: 12,
+        left: 12,
+        backgroundColor: '#FBBF24',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    featuredBadgeText: { fontSize: 11, fontWeight: '700', color: '#78350F' },
+    ratingBadge: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8,
+        backgroundColor: 'rgba(251, 191, 36, 0.95)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
     },
-    featuredTagRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
+    ratingBadgeText: { fontSize: 12, fontWeight: '700', color: '#78350F', marginLeft: 4 },
+    featuredBody: { padding: 16 },
+    featuredTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text, marginBottom: 4 },
+    featuredInstructor: { fontSize: 13, color: COLORS.textSecondary, marginBottom: 10 },
+    tagsRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
     tagPill: {
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 999,
-        backgroundColor: '#F3E8FF',
-        marginRight: 6,
+        marginRight: 8,
+        marginBottom: 4,
     },
-    tagText: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: COLORS.primary,
-    },
-    levelPill: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 999,
-        backgroundColor: '#EEF2FF',
-    },
-    levelText: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: '#4F46E5',
-    },
-    ratingRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    ratingText: {
-        marginLeft: 4,
-        fontSize: 12,
-        fontWeight: '600',
-        color: COLORS.text,
-    },
-    featuredTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: COLORS.text,
-        marginBottom: 8,
-    },
+    tagText: { fontSize: 11, fontWeight: '600' },
     featuredMetaRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 12,
+        marginBottom: 14,
     },
-    metaItem: {
+    metaItem: { flexDirection: 'row', alignItems: 'center', marginRight: 16 },
+    metaText: { fontSize: 12, color: COLORS.textSecondary, marginLeft: 6 },
+    featuredFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    enrollButtonWrap: { flex: 1, borderRadius: 14, overflow: 'hidden', marginRight: 12 },
+    enrollGradient: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+        height: 48,
+        paddingHorizontal: 20,
     },
-    metaText: {
-        fontSize: 12,
-        color: COLORS.textSecondary,
-        marginLeft: 4,
-    },
-    featuredFooter: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    badgePill: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 999,
-        backgroundColor: '#F97316',
-    },
-    badgeText: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#FFF7ED',
-    },
-    enrollButton: {
-        flex: 0,
-        width: 140,
-        height: 44,
-    },
-    enrollText: {
-        fontSize: 14,
-    },
-    recommendedCard: {
-        marginTop: 8,
-        padding: 16,
+    enrollText: { fontSize: 15, fontWeight: '600', color: '#fff', marginLeft: 8 },
+    heartButton: { padding: 8 },
+
+    recommendedSection: {
         backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 20,
+        ...SHADOWS.small,
     },
-    recommendedLabel: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: COLORS.text,
-        marginBottom: 4,
-    },
-    recommendedText: {
-        fontSize: 13,
-        color: COLORS.textSecondary,
-        marginBottom: 16,
-    },
-    recommendedActions: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
+    recommendedTitleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+    starIconWrap: { marginRight: 8 },
+    recommendedLabel: { fontSize: 16, fontWeight: '700', color: COLORS.text },
+    recommendedText: { fontSize: 14, color: COLORS.textSecondary, lineHeight: 22, marginBottom: 16 },
+    recommendedBold: { fontWeight: '700', color: COLORS.primary },
+    recommendedActions: { flexDirection: 'row' },
     outlineButton: {
         flex: 1,
-        height: 44,
-        borderRadius: 16,
+        marginRight: 12,
+        height: 48,
+        borderRadius: 14,
         borderWidth: 1,
         borderColor: '#E5E7EB',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
         backgroundColor: '#FFFFFF',
     },
-    outlineButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: COLORS.text,
-    },
-    customizeButton: {
-        flex: 1,
-        height: 44,
-    },
-    customizeText: {
-        fontSize: 14,
-    },
-    bookIconPage: {
-        width: 18,
-        height: 14,
-        borderRadius: 4,
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        marginBottom: 2,
-    },
+    outlineButtonText: { fontSize: 14, fontWeight: '600', color: COLORS.text },
+    customizeButton: { flex: 1, height: 48 },
+    customizeText: { fontSize: 14 },
 });
 
 export default ExploreScreen;
