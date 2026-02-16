@@ -1,17 +1,88 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Zap, LogOut, Clock, Flame, CheckCircle, Play, ArrowRight, Video, FileText, Plus } from 'lucide-react-native';
 import { Trophy } from 'lucide-react-native/icons';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
 import GlassCard from '../components/GlassCard';
 import { useUser } from '../context/UserContext';
+import { getDashboardData } from '../services/dashboardApi';
 
-const DashboardScreen = () => {
-    const { user, logout } = useUser();
-    const displayName = user?.name?.split(' ')[0] || user?.name || 'Student';
-    const today = new Date();
-    const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const CHART_MAX_HEIGHT = 70;
+const PRIORITY_STYLES = {
+    high: { bg: '#FECACA', text: '#EF4444', label: 'HIGH' },
+    medium: { bg: '#FFEDD5', text: '#EA580C', label: 'MEDIUM' },
+    low: { bg: '#D1FAE5', text: '#059669', label: 'LOW' },
+};
+
+const DashboardScreen = ({ navigation }) => {
+    const { user, token, logout } = useUser();
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [data, setData] = useState(null);
+
+    const loadDashboard = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await getDashboardData(token);
+            setData(res);
+        } catch (e) {
+            setError(e.message || 'Failed to load dashboard');
+        } finally {
+            setLoading(false);
+        }
+    }, [token]);
+
+    useEffect(() => {
+        loadDashboard();
+    }, [loadDashboard]);
+
+    const displayName = data?.userName ? data.userName.split(' ')[0] : (user?.name?.split(' ')[0] || user?.name || 'Student');
+    const dateStr = data?.currentDate || new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    const stats = data?.userStats || {};
+    const studyHours = stats.todayTimeSpentHours != null ? `${Number(stats.todayTimeSpentHours).toFixed(1)}h` : '0h';
+    const streak = stats.userStreak ?? 0;
+    const taskDone = stats.userTaskDone?.taskDone ?? 0;
+    const totalTask = stats.userTaskDone?.totalTask ?? 3;
+    const weekAnalysis = data?.weekAnalysis || [];
+    const weekHours = DAY_LETTERS.map((_, i) => weekAnalysis[i]?.hours ?? 0);
+    const maxWeekHours = Math.max(...weekHours, 1);
+    const totalWeekHours = data?.totalTimeThisWeek ?? 0;
+    const avgPerDay = data?.averageTimePerDay ?? 0;
+    const continueLearning = data?.continueLearning || [];
+    const todayTasks = data?.todayTasks || [];
+
+    if (loading && !data) {
+        return (
+            <View style={styles.container}>
+                <LinearGradient colors={[COLORS.background, '#F3E8FF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
+                <SafeAreaView style={styles.safeArea}>
+                    <View style={styles.loadingWrap}>
+                        <ActivityIndicator size="large" color={COLORS.primary} />
+                        <Text style={styles.loadingText}>Loading dashboard...</Text>
+                    </View>
+                </SafeAreaView>
+            </View>
+        );
+    }
+
+    if (error && !data) {
+        return (
+            <View style={styles.container}>
+                <LinearGradient colors={[COLORS.background, '#F3E8FF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
+                <SafeAreaView style={styles.safeArea}>
+                    <View style={styles.errorWrap}>
+                        <Text style={styles.errorText}>{error}</Text>
+                        <TouchableOpacity style={styles.retryBtn} onPress={loadDashboard}>
+                            <Text style={styles.retryBtnText}>Retry</Text>
+                        </TouchableOpacity>
+                    </View>
+                </SafeAreaView>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -28,16 +99,24 @@ const DashboardScreen = () => {
                     >
                     {/* Header */}
                     <View style={styles.header}>
-                        <View style={styles.userInfo}>
+                        <TouchableOpacity
+                            style={styles.userInfo}
+                            onPress={() => navigation.getParent()?.navigate('Profile')}
+                            activeOpacity={0.8}
+                        >
                             <View style={styles.avatarContainer}>
-                                <View style={styles.avatar} />
+                                {data?.userProfilePhoto ? (
+                                    <Image source={{ uri: data.userProfilePhoto }} style={styles.avatar} />
+                                ) : (
+                                    <View style={styles.avatar} />
+                                )}
                                 <View style={styles.onlineIndicator} />
                             </View>
                             <View>
                                 <Text style={styles.greeting}>{displayName}</Text>
                                 <Text style={styles.date}>{dateStr}</Text>
                             </View>
-                        </View>
+                        </TouchableOpacity>
                         <View style={styles.headerButtons}>
                             <TouchableOpacity style={styles.logoutBtn} onPress={() => logout()} activeOpacity={0.7}>
                                 <LogOut size={20} color={COLORS.textSecondary} />
@@ -58,7 +137,7 @@ const DashboardScreen = () => {
                                     <View style={[styles.statIconCircle, { backgroundColor: COLORS.primary }]}>
                                         <Clock size={18} color="#fff" strokeWidth={2.5} />
                                     </View>
-                                    <Text style={[styles.statValue, { color: COLORS.primary }]}>2.7h</Text>
+                                    <Text style={[styles.statValue, { color: COLORS.primary }]}>{studyHours}</Text>
                                 </View>
                                 <Text style={styles.statSub}>Study Time</Text>
                             </View>
@@ -67,7 +146,7 @@ const DashboardScreen = () => {
                                     <View style={[styles.statIconCircle, { backgroundColor: COLORS.warning }]}>
                                         <Flame size={18} color="#fff" strokeWidth={2.5} />
                                     </View>
-                                    <Text style={[styles.statValue, { color: COLORS.warning }]}>15</Text>
+                                    <Text style={[styles.statValue, { color: COLORS.warning }]}>{streak}</Text>
                                 </View>
                                 <Text style={styles.statSub}>Day Streak</Text>
                             </View>
@@ -76,7 +155,7 @@ const DashboardScreen = () => {
                                     <View style={[styles.statIconCircle, { backgroundColor: COLORS.success }]}>
                                         <CheckCircle size={18} color="#fff" strokeWidth={2.5} />
                                     </View>
-                                    <Text style={[styles.statValue, { color: COLORS.success }]}>0/3</Text>
+                                    <Text style={[styles.statValue, { color: COLORS.success }]}>{taskDone}/{totalTask}</Text>
                                 </View>
                                 <Text style={styles.statSub}>Tasks</Text>
                             </View>
@@ -91,19 +170,19 @@ const DashboardScreen = () => {
                                 <Text style={styles.sectionTitle}>This Week</Text>
                             </View>
                             <View>
-                                <Text style={styles.chartValue}>12.3h</Text>
-                                <Text style={styles.chartSub}>Avg: 1.8h</Text>
+                                <Text style={styles.chartValue}>{Number(totalWeekHours).toFixed(1)}h</Text>
+                                <Text style={styles.chartSub}>Avg: {Number(avgPerDay).toFixed(1)}h</Text>
                             </View>
                         </View>
                         <View style={styles.chartBars}>
-                            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => {
-                                const height = [40, 60, 30, 45, 70, 0, 0][index];
-                                // Mock chart
+                            {DAY_LETTERS.map((day, index) => {
+                                const hours = weekHours[index] ?? 0;
+                                const height = (hours / maxWeekHours) * CHART_MAX_HEIGHT || 0;
                                 return (
                                     <View key={index} style={styles.barContainer}>
                                         <LinearGradient
-                                            colors={index === 4 ? GRADIENTS.primary : ['#E9D5FF', '#E9D5FF']}
-                                            style={[styles.bar, { height: height, opacity: height === 0 ? 0.2 : 1 }]}
+                                            colors={height > 0 && index === (new Date().getDay() + 6) % 7 ? GRADIENTS.primary : ['#E9D5FF', '#E9D5FF']}
+                                            style={[styles.bar, { height: Math.max(height, 4), opacity: height === 0 ? 0.2 : 1 }]}
                                         />
                                         <Text style={styles.dayLabel}>{day}</Text>
                                     </View>
@@ -144,72 +223,43 @@ const DashboardScreen = () => {
                     </View>
 
                     <View style={styles.courseCardsColumn}>
-                        <GlassCard style={styles.courseCard}>
-                            <View style={styles.courseCardRow}>
-                                <View style={styles.courseImageWrap}>
-                                    <LinearGradient
-                                        colors={['#E9D5FF', '#F5D0FE', '#FFFFFF']}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 1 }}
-                                        style={styles.courseImage}
-                                    />
-                                    <View style={styles.courseBadge}>
-                                        <Text style={styles.courseBadgeText}>5</Text>
+                        {continueLearning.map((course, idx) => (
+                            <GlassCard key={course.bookName + idx} style={styles.courseCard}>
+                                <View style={styles.courseCardRow}>
+                                    <View style={styles.courseImageWrap}>
+                                        <LinearGradient
+                                            colors={['#E9D5FF', '#F5D0FE', '#FFFFFF']}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 1 }}
+                                            style={styles.courseImage}
+                                        />
+                                        {course.chapterNumber != null && (
+                                            <View style={styles.courseBadge}>
+                                                <Text style={styles.courseBadgeText}>{course.chapterNumber}</Text>
+                                            </View>
+                                        )}
                                     </View>
-                                </View>
-                                <View style={styles.courseInfo}>
-                                    <Text style={[styles.courseTitle, { fontSize: 12 }]}>Quantum Mechanics</Text>
-                                    <Text style={[styles.courseSub, { fontSize: 10 }]}>Chapter 12: Wave Functions</Text>
-                                    <View style={styles.courseProgressRow}>
-                                        <View style={styles.courseProgressBarBg}>
-                                            <LinearGradient colors={GRADIENTS.primary} style={[styles.courseProgressBarFill, { width: '67%' }]} />
+                                    <View style={styles.courseInfo}>
+                                        <Text style={[styles.courseTitle, { fontSize: 12 }]}>{course.bookName}</Text>
+                                        <Text style={[styles.courseSub, { fontSize: 10 }]}>Chapter {course.chapterNumber}: {course.chapterName}</Text>
+                                        <View style={styles.courseProgressRow}>
+                                            <View style={styles.courseProgressBarBg}>
+                                                <LinearGradient colors={GRADIENTS.primary} style={[styles.courseProgressBarFill, { width: `${course.progressPercentage ?? 0}%` }]} />
+                                            </View>
+                                        </View>
+                                        <View style={styles.courseMeta}>
+                                            <Text style={styles.metaText}>{course.chapterNumber}/{course.totalChapters} lessons</Text>
+                                            <Text style={styles.metaText}>{course.timeLeftHours ? `${course.timeLeftHours}h left` : '—'}</Text>
                                         </View>
                                     </View>
-                                    <View style={styles.courseMeta}>
-                                        <Text style={styles.metaText}>12/18 lessons</Text>
-                                        <Text style={styles.metaText}>28 min left</Text>
-                                    </View>
+                                    <TouchableOpacity style={styles.coursePlayWrap} activeOpacity={0.8}>
+                                        <LinearGradient colors={GRADIENTS.primary} style={styles.coursePlayBtn}>
+                                            <Play size={15} color="#fff" fill="#fff" />
+                                        </LinearGradient>
+                                    </TouchableOpacity>
                                 </View>
-                                <TouchableOpacity style={styles.coursePlayWrap} activeOpacity={0.8}>
-                                    <LinearGradient colors={GRADIENTS.primary} style={styles.coursePlayBtn}>
-                                        <Play size={15} color="#fff" fill="#fff" />
-                                    </LinearGradient>
-                                </TouchableOpacity>
-                            </View>
-                        </GlassCard>
-                        <GlassCard style={styles.courseCard}>
-                            <View style={styles.courseCardRow}>
-                                <View style={styles.courseImageWrap}>
-                                    <LinearGradient
-                                        colors={['#E9D5FF', '#F5D0FE', '#FFFFFF']}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 1 }}
-                                        style={styles.courseImage}
-                                    />
-                                    <View style={styles.courseBadge}>
-                                        <Text style={styles.courseBadgeText}>5</Text>
-                                    </View>
-                                </View>
-                                <View style={styles.courseInfo}>
-                                    <Text style={[styles.courseTitle, { fontSize: 12 }]}>Quantum Mechanics</Text>
-                                    <Text style={[styles.courseSub, { fontSize: 10 }]}>Chapter 12: Wave Functions</Text>
-                                    <View style={styles.courseProgressRow}>
-                                        <View style={styles.courseProgressBarBg}>
-                                            <LinearGradient colors={GRADIENTS.primary} style={[styles.courseProgressBarFill, { width: '67%' }]} />
-                                        </View>
-                                    </View>
-                                    <View style={styles.courseMeta}>
-                                        <Text style={styles.metaText}>12/18 lessons</Text>
-                                        <Text style={styles.metaText}>28 min left</Text>
-                                    </View>
-                                </View>
-                                <TouchableOpacity style={styles.coursePlayWrap} activeOpacity={0.8}>
-                                    <LinearGradient colors={GRADIENTS.primary} style={styles.coursePlayBtn}>
-                                        <Play size={15} color="#fff" fill="#fff" />
-                                    </LinearGradient>
-                                </TouchableOpacity>
-                            </View>
-                        </GlassCard>
+                            </GlassCard>
+                        ))}
                     </View>
 
                     {/* Today's Tasks */}
@@ -217,7 +267,7 @@ const DashboardScreen = () => {
                         <View style={styles.sectionTitleRow}>
                             <View style={styles.indicator} />
                             <Text style={styles.sectionTitle}>Today's Tasks</Text>
-                            <View style={styles.countBadge}><Text style={styles.countText}>0/3</Text></View>
+                            <View style={styles.countBadge}><Text style={styles.countText}>{taskDone}/{totalTask}</Text></View>
                         </View>
                         <TouchableOpacity>
                             <View style={styles.addButton}>
@@ -227,57 +277,34 @@ const DashboardScreen = () => {
                     </View>
 
                     <GlassCard style={styles.taskCard}>
-                        <View style={styles.taskRow}>
-                            <TouchableOpacity style={styles.checkbox} />
-                            <View style={[styles.taskIcon, { backgroundColor: '#F3E8FF' }]}>
-                                <View style={{ width: 16, height: 16, borderRadius: 4, borderWidth: 1, borderColor: COLORS.primary }} />
+                        {todayTasks.length === 0 ? (
+                            <View style={styles.taskRow}>
+                                <Text style={styles.taskEmpty}>No tasks for today</Text>
                             </View>
-                            <View style={styles.taskContent}>
-                                <Text style={styles.taskTitle}>Complete Physics Quiz</Text>
-                                <View style={styles.taskMeta}>
-                                    <Clock size={12} color={COLORS.textSecondary} />
-                                    <Text style={styles.taskTime}>in 2 hours</Text>
-                                    <Text style={[styles.taskTag, { color: COLORS.primary }]}>• Physics</Text>
-                                </View>
-                            </View>
-                            <View style={[styles.priorityBadge, { backgroundColor: '#FECACA' }]}>
-                                <Text style={[styles.priorityText, { color: '#EF4444' }]}>HIGH</Text>
-                            </View>
-                        </View>
-                        <View style={[styles.taskRow, styles.taskRowBorder]}>
-                            <TouchableOpacity style={styles.checkbox} />
-                            <View style={[styles.taskIcon, { backgroundColor: '#F3E8FF' }]}>
-                                <Video size={18} color={COLORS.primary} />
-                            </View>
-                            <View style={styles.taskContent}>
-                                <Text style={styles.taskTitle}>Watch Calculus Lecture</Text>
-                                <View style={styles.taskMeta}>
-                                    <Clock size={12} color={COLORS.textSecondary} />
-                                    <Text style={styles.taskTime}>in 4 hours</Text>
-                                    <Text style={[styles.taskTag, { color: COLORS.primary }]}>• Calculus</Text>
-                                </View>
-                            </View>
-                            <View style={[styles.priorityBadge, { backgroundColor: '#FFEDD5' }]}>
-                                <Text style={[styles.priorityText, { color: '#EA580C' }]}>MEDIUM</Text>
-                            </View>
-                        </View>
-                        <View style={[styles.taskRow, styles.taskRowBorder]}>
-                            <TouchableOpacity style={styles.checkbox} />
-                            <View style={[styles.taskIcon, { backgroundColor: '#F3E8FF' }]}>
-                                <FileText size={18} color={COLORS.primary} />
-                            </View>
-                            <View style={styles.taskContent}>
-                                <Text style={styles.taskTitle}>Submit Lab Report</Text>
-                                <View style={styles.taskMeta}>
-                                    <Clock size={12} color={COLORS.textSecondary} />
-                                    <Text style={styles.taskTime}>tomorrow</Text>
-                                    <Text style={[styles.taskTag, { color: COLORS.primary }]}>• Chemistry</Text>
-                                </View>
-                            </View>
-                            <View style={[styles.priorityBadge, { backgroundColor: '#D1FAE5' }]}>
-                                <Text style={[styles.priorityText, { color: '#059669' }]}>LOW</Text>
-                            </View>
-                        </View>
+                        ) : (
+                            todayTasks.map((task, idx) => {
+                                const pri = PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.medium;
+                                return (
+                                    <View key={task.taskTitle + idx} style={[styles.taskRow, idx > 0 && styles.taskRowBorder]}>
+                                        <TouchableOpacity style={styles.checkbox} />
+                                        <View style={[styles.taskIcon, { backgroundColor: '#F3E8FF' }]}>
+                                            <FileText size={18} color={COLORS.primary} />
+                                        </View>
+                                        <View style={styles.taskContent}>
+                                            <Text style={styles.taskTitle}>{task.taskTitle}</Text>
+                                            <View style={styles.taskMeta}>
+                                                <Clock size={12} color={COLORS.textSecondary} />
+                                                <Text style={styles.taskTime}>{task.taskDueTime}</Text>
+                                                <Text style={[styles.taskTag, { color: COLORS.primary }]}>• {task.taskCourse}</Text>
+                                            </View>
+                                        </View>
+                                        <View style={[styles.priorityBadge, { backgroundColor: pri.bg }]}>
+                                            <Text style={[styles.priorityText, { color: pri.text }]}>{pri.label}</Text>
+                                        </View>
+                                    </View>
+                                );
+                            })
+                        )}
                     </GlassCard>
 
                     <View style={{ height: 120 }} />
@@ -322,8 +349,29 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: '#ddd', // Placeholder
+        backgroundColor: '#ddd',
     },
+    loadingWrap: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: { marginTop: 12, fontSize: 15, color: COLORS.textSecondary },
+    errorWrap: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    errorText: { fontSize: 16, color: COLORS.textSecondary, textAlign: 'center', marginBottom: 16 },
+    retryBtn: {
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 12,
+        backgroundColor: COLORS.primary,
+    },
+    retryBtnText: { fontSize: 16, fontWeight: '600', color: '#fff' },
+    taskEmpty: { fontSize: 14, color: COLORS.textSecondary, paddingVertical: 12 },
     onlineIndicator: {
         width: 12,
         height: 12,

@@ -12,3 +12,6 @@ const getBaseUrl = () => {
 
 export const API_BASE_URL = getBaseUrl();
 export const AUTH_BASE = `${API_BASE_URL}/api/auth`;
+export const EXPLORE_BASE = `${API_BASE_URL}/api/explore`;
+export const PROFILE_BASE = `${API_BASE_URL}/api/profile`;
+export const DASHBOARD_BASE = `${API_BASE_URL}/api/dashboard`;

@@ -19,6 +19,7 @@ import CompleteProfileScreen from '../screens/CompleteProfileScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import LibraryScreen from '../screens/LibraryScreen';
 import ExploreScreen from '../screens/ExploreScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 import SplashScreen from '../screens/SplashScreen';
 import { COLORS, GRADIENTS } from '../constants/theme';
 
@@ -186,6 +187,7 @@ const AuthStack = () => (
 const MainStack = () => (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Main" component={MainTabs} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
     </Stack.Navigator>
 );
 

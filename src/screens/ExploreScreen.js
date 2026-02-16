@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -8,6 +8,7 @@ import {
     TextInput,
     TouchableOpacity,
     Dimensions,
+    ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -29,8 +30,8 @@ import {
     Clock,
 } from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
-import GlassCard from '../components/GlassCard';
 import GradientButton from '../components/GradientButton';
+import { getExploreData } from '../services/exploreApi';
 
 const { width } = Dimensions.get('window');
 const CARD_GAP = 12;
@@ -39,59 +40,118 @@ const categoryCardWidth = (width - GRID_PADDING * 2 - CARD_GAP) / 2;
 
 const ORANGE_ACCENT = '#F97316';
 
-const trendingList = [
-    { id: 1, title: 'Astrophysics Basics', category: 'Physics', change: '+120%' },
-    { id: 2, title: 'Creative Writing', category: 'English', change: '+100%' },
-    { id: 3, title: 'Machine Learning', category: 'Technology', change: '+80%' },
-];
+const CATEGORY_ICONS = {
+    'quantum physics': BookOpen,
+    'digital art': Palette,
+    'music theory': Music,
+    programming: Code,
+    languages: MessageCircle,
+    biology: BookOpen,
+};
+const defaultCategoryIcon = BookOpen;
 
-const categories = [
-    { id: 1, title: 'Quantum Phy', count: 12, icon: BookOpen, badge: true },
-    { id: 2, title: 'Digital Art', count: 8, icon: Palette, badge: false },
-    { id: 3, title: 'Music', count: 9, icon: Music, badge: true },
-    { id: 4, title: 'Programming', count: 16, icon: Code, badge: false },
-    { id: 5, title: 'Languages', count: 14, icon: MessageCircle, badge: false },
-    { id: 6, title: 'Biology', count: 7, icon: BookOpen, badge: true },
-];
-
-const featuredCourses = [
-    {
-        id: 1,
-        title: 'Quantum Computing',
-        instructor: 'Dr. Juan Chloe',
-        tags: [{ label: 'Physics', color: '#A855F7' }, { label: 'Advanced', color: '#EF4444' }],
-        duration: '8 weeks',
-        lessons: '42 lessons',
-        students: '2.4k',
-        rating: '4.9',
-        badge: 'BESTSELLER',
-    },
-    {
-        id: 2,
-        title: 'Digital Painting',
-        instructor: 'Jane Smith',
-        tags: [{ label: 'Design', color: '#A855F7' }, { label: 'Intermediate', color: '#F59E0B' }],
-        duration: '4 weeks',
-        lessons: '28 lessons',
-        students: '1.8k',
-        rating: '4.8',
-        badge: null,
-    },
-    {
-        id: 3,
-        title: 'Music Production',
-        instructor: 'Alex Rivera',
-        tags: [{ label: 'Music', color: '#A855F7' }, { label: 'Beginner', color: '#22C55E' }],
-        duration: '5 weeks',
-        lessons: '35 lessons',
-        students: '3.2k',
-        rating: '4.9',
-        badge: 'BESTSELLER',
-    },
-];
+const formatStudents = (num) => {
+    if (num >= 1000) return `${(num / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+    return String(num);
+};
 
 const ExploreScreen = () => {
-    const [selectedCategoryId, setSelectedCategoryId] = useState(2);
+    const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [stats, setStats] = useState({ totalRegisteredCourses: 0, totalAppUsers: 0, todayNewUsers: 0 });
+    const [trendingList, setTrendingList] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [featuredCourses, setFeaturedCourses] = useState([]);
+
+    const loadExplore = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const data = await getExploreData();
+            setStats({
+                totalRegisteredCourses: data.totalRegisteredCourses ?? 0,
+                totalAppUsers: data.totalAppUsers ?? 0,
+                todayNewUsers: data.todayNewUsers ?? 0,
+            });
+            setTrendingList((data.trendingNow || []).map((t, i) => ({
+                id: i + 1,
+                title: t.bookName,
+                category: t.category,
+                change: `+${t.percentage ?? 0}%`,
+            })));
+            const cats = (data.browseCategories || []).map((c, i) => ({
+                id: i + 1,
+                title: c.category,
+                count: c.totalBooks ?? 0,
+                newBooks: c.newBooks ?? 0,
+                icon: CATEGORY_ICONS[(c.category || '').toLowerCase()] || defaultCategoryIcon,
+                badge: (c.newBooks ?? 0) > 0,
+            }));
+            setCategories(cats);
+            if (cats.length && selectedCategoryId === null) setSelectedCategoryId(cats[0].id);
+            const levelColors = { Advanced: '#EF4444', Intermediate: '#F59E0B', Beginner: '#22C55E' };
+            setFeaturedCourses((data.featuredCourses || []).map((f) => ({
+                id: f.bookId,
+                title: f.bookName,
+                instructor: f.writerName,
+                tags: [
+                    { label: f.category, color: '#A855F7' },
+                    { label: f.level, color: levelColors[f.level] || '#6B7280' },
+                ],
+                duration: f.duration ?? '',
+                lessons: `${f.totalChapters ?? 0} lessons`,
+                students: formatStudents(f.totalEnrolledUsers ?? 0),
+                rating: '4.8',
+                badge: null,
+                bookPreviewUrl: f.bookPreviewUrl,
+            })));
+        } catch (e) {
+            setError(e.message || 'Failed to load explore');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadExplore();
+    }, [loadExplore]);
+
+    const statsDisplay = [
+        { value: stats.totalRegisteredCourses ? `${stats.totalRegisteredCourses}+` : '0', label: 'COURSES', icon: Monitor },
+        { value: stats.totalAppUsers >= 1000 ? `${(stats.totalAppUsers / 1000).toFixed(0)}k+` : `${stats.totalAppUsers}+`, label: 'LEARNERS', icon: Users },
+        { value: String(stats.todayNewUsers), label: 'NEW TODAY', icon: Zap },
+    ];
+
+    if (loading && !trendingList.length && !categories.length) {
+        return (
+            <View style={styles.container}>
+                <LinearGradient colors={[COLORS.background, '#F8F5FF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
+                <SafeAreaView style={styles.safeArea}>
+                    <View style={styles.loadingWrap}>
+                        <ActivityIndicator size="large" color={COLORS.primary} />
+                        <Text style={styles.loadingText}>Loading explore...</Text>
+                    </View>
+                </SafeAreaView>
+            </View>
+        );
+    }
+
+    if (error && !trendingList.length && !categories.length) {
+        return (
+            <View style={styles.container}>
+                <LinearGradient colors={[COLORS.background, '#F8F5FF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
+                <SafeAreaView style={styles.safeArea}>
+                    <View style={styles.errorWrap}>
+                        <Text style={styles.errorText}>{error}</Text>
+                        <TouchableOpacity style={styles.retryButton} onPress={loadExplore} activeOpacity={0.8}>
+                            <Text style={styles.retryButtonText}>Retry</Text>
+                        </TouchableOpacity>
+                    </View>
+                </SafeAreaView>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -144,11 +204,7 @@ const ExploreScreen = () => {
 
                         {/* Stats: icon on top, number, uppercase label */}
                         <View style={styles.statsRow}>
-                            {[
-                                { value: '120+', label: 'COURSES', icon: Monitor },
-                                { value: '10k+', label: 'LEARNERS', icon: Users },
-                                { value: '8', label: 'NEW TODAY', icon: Zap },
-                            ].map((stat, i) => (
+                            {statsDisplay.map((stat, i) => (
                                 <View key={i} style={styles.statCard}>
                                     <View style={styles.statIconWrap}>
                                         <LinearGradient
@@ -224,9 +280,9 @@ const ExploreScreen = () => {
                                             <View style={styles.categoryActiveOuter} pointerEvents="none" />
                                         )}
                                         <View style={[styles.categoryCard, isActive && styles.categoryCardActive]}>
-                                            {cat.badge && (
+                                            {cat.badge && cat.newBooks > 0 && (
                                                 <View style={styles.categoryBadge}>
-                                                    <Text style={styles.categoryBadgeText}>1</Text>
+                                                    <Text style={styles.categoryBadgeText}>{cat.newBooks}</Text>
                                                 </View>
                                             )}
                                             <View style={styles.categoryIconWrap}>
@@ -240,7 +296,7 @@ const ExploreScreen = () => {
                                             <Text style={styles.categoryTitle} numberOfLines={1}>
                                                 {cat.title}
                                             </Text>
-                                            <Text style={styles.categoryCount}>{cat.count} courses</Text>
+                                            <Text style={styles.categoryCount}>{cat.count} course{cat.count !== 1 ? 's' : ''}</Text>
                                         </View>
                                     </TouchableOpacity>
                                 );
@@ -366,6 +422,39 @@ const ExploreScreen = () => {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     safeArea: { flex: 1 },
+    loadingWrap: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 12,
+        fontSize: 15,
+        color: COLORS.textSecondary,
+    },
+    errorWrap: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    errorText: {
+        fontSize: 16,
+        color: COLORS.textSecondary,
+        textAlign: 'center',
+        marginBottom: 16,
+    },
+    retryButton: {
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 12,
+        backgroundColor: COLORS.primary,
+    },
+    retryButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#fff',
+    },
     scrollWrapper: { flex: 1, minHeight: 0 },
     scrollView: { flex: 1 },
     scrollContent: { padding: GRID_PADDING },
