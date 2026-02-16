@@ -33,7 +33,7 @@ const ForgotPasswordScreen = ({ navigation, route }) => {
         try {
             await forgotPasswordApi(emailVal);
             setLoading(false);
-            navigation.replace('ResetLinkSent', { email: emailVal, role });
+            navigation.replace('ResetPassword', { email: emailVal, role });
         } catch (err) {
             setLoading(false);
             Alert.alert('Error', err.message || 'Failed to send reset link');
@@ -114,7 +114,7 @@ const ForgotPasswordScreen = ({ navigation, route }) => {
                                 />
                             </View>
                             <Text style={styles.hint}>
-                                We'll send a password reset link to this email
+                                We'll send a 6-digit OTP to this email
                             </Text>
 
                             <TouchableOpacity
@@ -134,7 +134,7 @@ const ForgotPasswordScreen = ({ navigation, route }) => {
                                     ) : (
                                         <>
                                             <Mail size={20} color="#fff" />
-                                            <Text style={styles.sendButtonText}>Send Reset Link</Text>
+                                            <Text style={styles.sendButtonText}>Send OTP</Text>
                                         </>
                                     )}
                                 </LinearGradient>

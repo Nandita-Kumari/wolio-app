@@ -16,19 +16,24 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
-import { Lock, Eye, EyeOff, Sparkles, ArrowRight, GraduationCap } from 'lucide-react-native';
+import { Lock, Eye, EyeOff, Sparkles, ArrowRight, GraduationCap, RefreshCw } from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
 import { useUser } from '../context/UserContext';
 
+const OTP_LENGTH = 6;
+
 const ResetPasswordScreen = ({ navigation, route }) => {
-    const { resetPassword: resetPasswordApi } = useUser();
+    const { resetPassword: resetPasswordApi, forgotPassword: resendOtpApi } = useUser();
     const role = route?.params?.role ?? 'Student';
-    const resetToken = route?.params?.resetToken ?? route?.params?.token;
+    const email = route?.params?.email ?? '';
+    const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [resendLoading, setResendLoading] = useState(false);
+    const otpRefs = useRef([]);
 
     const spinValue = useRef(new RNAnimated.Value(0)).current;
     useEffect(() => {
@@ -49,23 +54,52 @@ const ResetPasswordScreen = ({ navigation, route }) => {
         outputRange: ['0deg', '360deg'],
     });
 
+    const otpString = otp.join('');
     const canSubmit =
+        otpString.length === OTP_LENGTH &&
         newPassword.length >= 6 &&
         confirmPassword.length >= 6 &&
         newPassword === confirmPassword;
 
+    const handleOtpChange = (value, index) => {
+        const digit = value.replace(/\D/g, '').slice(-1);
+        const next = [...otp];
+        next[index] = digit;
+        setOtp(next);
+        if (digit && index < OTP_LENGTH - 1) {
+            otpRefs.current[index + 1]?.focus();
+        }
+    };
+    const handleOtpKeyPress = (e, index) => {
+        if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
+            otpRefs.current[index - 1]?.focus();
+        }
+    };
+
+    const handleResendOtp = async () => {
+        if (!email.trim() || resendLoading) return;
+        setResendLoading(true);
+        try {
+            await resendOtpApi(email.trim());
+            setResendLoading(false);
+            setOtp(['', '', '', '', '', '']);
+            otpRefs.current[0]?.focus();
+            Alert.alert('Done', 'A new OTP has been sent to your email.');
+        } catch (err) {
+            setResendLoading(false);
+            Alert.alert('Error', err.message || 'Failed to resend OTP');
+        }
+    };
+
     const handleReset = async () => {
         if (!canSubmit || loading) return;
-        if (!resetToken) {
-            Alert.alert(
-                'Reset link required',
-                'Use the link sent to your email to set a new password. If you didn\'t receive it, request a new one from Forgot Password.'
-            );
+        if (!email.trim()) {
+            Alert.alert('Error', 'Something went wrong. Please start again from Forgot Password.');
             return;
         }
         setLoading(true);
         try {
-            await resetPasswordApi(resetToken, newPassword, confirmPassword);
+            await resetPasswordApi(email.trim(), otpString, newPassword, confirmPassword);
             setLoading(false);
             navigation.navigate('Login');
         } catch (err) {
@@ -97,7 +131,6 @@ const ResetPasswordScreen = ({ navigation, route }) => {
                         keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
                     >
-                        {/* Top right: Student badge with graduation cap */}
                         <View style={styles.topBar}>
                             <View style={{ flex: 1 }} />
                             <View style={styles.roleBadge}>
@@ -113,7 +146,6 @@ const ResetPasswordScreen = ({ navigation, route }) => {
                             </View>
                         </View>
 
-                        {/* Centered logo - rotating 360 */}
                         <View style={styles.header}>
                             <RNAnimated.View style={[styles.logoOuter, { transform: [{ rotate }] }]}>
                                 <LinearGradient
@@ -145,8 +177,38 @@ const ResetPasswordScreen = ({ navigation, route }) => {
                             <Text style={styles.subtitle}>Create a strong new password</Text>
                         </View>
 
-                        {/* White card: inputs + button */}
                         <View style={styles.card}>
+                            <Text style={styles.label}>Enter 6-Digit OTP</Text>
+                            <Text style={styles.otpHint}>Sent to your email</Text>
+                            <View style={styles.otpRow}>
+                                {otp.map((digit, index) => (
+                                    <TextInput
+                                        key={index}
+                                        ref={(r) => (otpRefs.current[index] = r)}
+                                        style={[styles.otpBox, digit ? styles.otpBoxFilled : null]}
+                                        value={digit}
+                                        onChangeText={(v) => handleOtpChange(v, index)}
+                                        onKeyPress={(e) => handleOtpKeyPress(e, index)}
+                                        keyboardType="number-pad"
+                                        maxLength={1}
+                                        selectTextOnFocus
+                                    />
+                                ))}
+                            </View>
+                            <TouchableOpacity
+                                style={styles.resendRow}
+                                onPress={handleResendOtp}
+                                disabled={resendLoading}
+                                activeOpacity={0.7}
+                            >
+                                {resendLoading ? (
+                                    <ActivityIndicator size="small" color={COLORS.primary} />
+                                ) : (
+                                    <RefreshCw size={16} color={COLORS.primary} />
+                                )}
+                                <Text style={styles.resendText}>Resend OTP</Text>
+                            </TouchableOpacity>
+
                             <Text style={styles.label}>New Password</Text>
                             <View style={styles.inputContainer}>
                                 <Lock size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
@@ -244,7 +306,6 @@ const styles = StyleSheet.create({
         paddingTop: 12,
         paddingBottom: 40,
     },
-
     topBar: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -267,7 +328,6 @@ const styles = StyleSheet.create({
         color: '#fff',
         marginLeft: 8,
     },
-
     header: {
         alignItems: 'center',
         marginBottom: 28,
@@ -288,27 +348,19 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: 'transparent',
     },
-    titleMaskWrap: {
-        marginBottom: 8,
-        alignSelf: 'center',
-    },
-    titleGradient: {
-        paddingVertical: 0,
-    },
+    titleMaskWrap: { marginBottom: 8, alignSelf: 'center' },
+    titleGradient: { paddingVertical: 0 },
     titleMask: {
         fontSize: 28,
         fontWeight: '700',
         backgroundColor: 'transparent',
     },
-    titleMaskInner: {
-        opacity: 0,
-    },
+    titleMaskInner: { opacity: 0 },
     subtitle: {
         fontSize: 15,
         color: COLORS.textSecondary,
         textAlign: 'center',
     },
-
     card: {
         backgroundColor: '#FFFFFF',
         borderRadius: 24,
@@ -326,6 +378,43 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: COLORS.text,
         marginBottom: 10,
+    },
+    otpHint: {
+        fontSize: 13,
+        color: COLORS.textSecondary,
+        marginBottom: 12,
+    },
+    otpRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    otpBox: {
+        width: 44,
+        height: 52,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        textAlign: 'center',
+        fontSize: 20,
+        fontWeight: '600',
+        color: COLORS.text,
+    },
+    otpBoxFilled: {
+        borderColor: COLORS.primary,
+        backgroundColor: 'rgba(168, 85, 247, 0.06)',
+    },
+    resendRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        marginBottom: 20,
+    },
+    resendText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.primary,
+        marginLeft: 6,
     },
     inputContainer: {
         flexDirection: 'row',
@@ -358,9 +447,7 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
         elevation: 6,
     },
-    resetButtonDisabled: {
-        opacity: 0.6,
-    },
+    resetButtonDisabled: { opacity: 0.6 },
     resetButtonGradient: {
         flex: 1,
         flexDirection: 'row',

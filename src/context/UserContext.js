@@ -75,8 +75,8 @@ export const UserProvider = ({ children }) => {
   };
 
   const forgotPassword = (email) => authApi.forgotPassword(email);
-  const resetPassword = (resetToken, password, confirmPassword) =>
-    authApi.resetPassword(resetToken, password, confirmPassword);
+  const resetPassword = (email, otp, password, confirmPassword) =>
+    authApi.resetPassword(email, otp, password, confirmPassword);
 
   return (
     <UserContext.Provider

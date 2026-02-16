@@ -201,7 +201,10 @@ const AppNavigator = () => {
     }
 
     return (
-        <NavigationContainer style={styles.navContainer}>
+        <NavigationContainer
+            key={isLoggedIn ? 'main' : 'auth'}
+            style={styles.navContainer}
+        >
             {isLoggedIn ? <MainStack /> : <AuthStack />}
         </NavigationContainer>
     );

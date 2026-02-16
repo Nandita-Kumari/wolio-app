@@ -55,10 +55,9 @@ export const forgotPassword = async (email) => {
   });
 };
 
-export const resetPassword = async (token, password, confirmPassword) => {
+export const resetPassword = async (email, otp, password, confirmPassword) => {
   return authFetch('/reset-password', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ password, confirmPassword }),
+    body: JSON.stringify({ email, otp, password, confirmPassword }),
   });
 };
