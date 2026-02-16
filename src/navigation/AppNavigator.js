@@ -2,11 +2,12 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
-import { View, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Home, Book, Compass } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
+import { useUser } from '../context/UserContext';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
@@ -164,28 +165,55 @@ const MainTabs = () => {
     );
 };
 
+const AuthStack = () => (
+    <Stack.Navigator
+        screenOptions={{ headerShown: false, animationEnabled: true }}
+        initialRouteName="Login"
+    >
+        <Stack.Screen name="Splash" component={SplashScreen} />
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="ResetLinkSent" component={ResetLinkSentScreen} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+        <Stack.Screen name="Signup" component={SignupScreen} />
+        <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
+        <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
+        <Stack.Screen name="Main" component={MainTabs} />
+    </Stack.Navigator>
+);
+
+const MainStack = () => (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Main" component={MainTabs} />
+    </Stack.Navigator>
+);
+
 const AppNavigator = () => {
+    const { isLoggedIn, loading } = useUser();
+
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+            </View>
+        );
+    }
+
     return (
         <NavigationContainer style={styles.navContainer}>
-            <Stack.Navigator screenOptions={{ headerShown: false, animationEnabled: true }}>
-                <Stack.Screen name="Splash" component={SplashScreen} />
-                <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-                <Stack.Screen name="Login" component={LoginScreen} />
-                <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-                <Stack.Screen name="ResetLinkSent" component={ResetLinkSentScreen} />
-                <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-                <Stack.Screen name="Signup" component={SignupScreen} />
-                <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
-                <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
-                <Stack.Screen name="Main" component={MainTabs} />
-            </Stack.Navigator>
+            {isLoggedIn ? <MainStack /> : <AuthStack />}
         </NavigationContainer>
     );
 };
 
 const styles = StyleSheet.create({
-    navContainer: {
+    navContainer: { flex: 1 },
+    loadingContainer: {
         flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
     },
     tabBarBackground: {
         borderRadius: TAB_BAR_RADIUS,

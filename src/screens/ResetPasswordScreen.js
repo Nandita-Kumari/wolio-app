@@ -10,6 +10,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator,
+    Alert,
     Animated as RNAnimated,
     Easing,
 } from 'react-native';
@@ -17,9 +18,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 import { Lock, Eye, EyeOff, Sparkles, ArrowRight, GraduationCap } from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
+import { useUser } from '../context/UserContext';
 
 const ResetPasswordScreen = ({ navigation, route }) => {
+    const { resetPassword: resetPasswordApi } = useUser();
     const role = route?.params?.role ?? 'Student';
+    const resetToken = route?.params?.resetToken ?? route?.params?.token;
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showNewPassword, setShowNewPassword] = useState(false);
@@ -50,13 +54,24 @@ const ResetPasswordScreen = ({ navigation, route }) => {
         confirmPassword.length >= 6 &&
         newPassword === confirmPassword;
 
-    const handleReset = () => {
+    const handleReset = async () => {
         if (!canSubmit || loading) return;
+        if (!resetToken) {
+            Alert.alert(
+                'Reset link required',
+                'Use the link sent to your email to set a new password. If you didn\'t receive it, request a new one from Forgot Password.'
+            );
+            return;
+        }
         setLoading(true);
-        setTimeout(() => {
+        try {
+            await resetPasswordApi(resetToken, newPassword, confirmPassword);
             setLoading(false);
             navigation.navigate('Login');
-        }, 1000);
+        } catch (err) {
+            setLoading(false);
+            Alert.alert('Error', err.message || 'Failed to reset password');
+        }
     };
 
     return (

@@ -1,11 +1,18 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Zap, Trophy, ArrowRight, Play, Plus, Clock, Flame, CheckCircle, Video, FileText } from 'lucide-react-native';
+import { Zap, LogOut, Clock, Flame, CheckCircle, Play, ArrowRight, Video, FileText, Plus } from 'lucide-react-native';
+import { Trophy } from 'lucide-react-native/icons';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
 import GlassCard from '../components/GlassCard';
+import { useUser } from '../context/UserContext';
 
 const DashboardScreen = () => {
+    const { user, logout } = useUser();
+    const displayName = user?.name?.split(' ')[0] || user?.name || 'Student';
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
     return (
         <View style={styles.container}>
             <LinearGradient
@@ -23,20 +30,24 @@ const DashboardScreen = () => {
                     <View style={styles.header}>
                         <View style={styles.userInfo}>
                             <View style={styles.avatarContainer}>
-                                {/* Placeholder for Avatar */}
                                 <View style={styles.avatar} />
                                 <View style={styles.onlineIndicator} />
                             </View>
                             <View>
-                                <Text style={styles.greeting}>Jordan Lee</Text>
-                                <Text style={styles.date}>Friday, Feb 13</Text>
+                                <Text style={styles.greeting}>{displayName}</Text>
+                                <Text style={styles.date}>{dateStr}</Text>
                             </View>
                         </View>
-                        <TouchableOpacity style={styles.notificationBtn}>
-                            <LinearGradient colors={GRADIENTS.primary} style={styles.notificationGradient}>
-                                <Zap size={20} color="#fff" strokeWidth={2.5} />
-                            </LinearGradient>
-                        </TouchableOpacity>
+                        <View style={styles.headerButtons}>
+                            <TouchableOpacity style={styles.logoutBtn} onPress={() => logout()} activeOpacity={0.7}>
+                                <LogOut size={20} color={COLORS.textSecondary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.notificationBtn}>
+                                <LinearGradient colors={GRADIENTS.primary} style={styles.notificationGradient}>
+                                    <Zap size={20} color="#fff" strokeWidth={2.5} />
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {/* Stats Row - three equal columns in a row: icon + value on top, label below */}
@@ -333,9 +344,15 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: COLORS.textSecondary,
     },
-    notificationBtn: {
-        // Shadow handled by gradient wrapper or surrounding view usually
+    headerButtons: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
+    logoutBtn: {
+        padding: 8,
+        marginRight: 4,
+    },
+    notificationBtn: {},
     notificationGradient: {
         width: 40,
         height: 40,

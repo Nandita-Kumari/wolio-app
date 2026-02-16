@@ -10,25 +10,34 @@ import {
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator,
+    Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, Mail, Sparkles } from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
+import { useUser } from '../context/UserContext';
 
 const ForgotPasswordScreen = ({ navigation, route }) => {
+    const { forgotPassword: forgotPasswordApi } = useUser();
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const role = route?.params?.role ?? 'Parent';
 
-    const handleSendReset = () => {
+    const handleSendReset = async () => {
+        const emailVal = email.trim();
+        if (!emailVal) {
+            Alert.alert('Error', 'Please enter your email');
+            return;
+        }
         setLoading(true);
-        setTimeout(() => {
+        try {
+            await forgotPasswordApi(emailVal);
             setLoading(false);
-            navigation.replace('ResetLinkSent', {
-                email: email.trim() || 'your email',
-                role,
-            });
-        }, 1200);
+            navigation.replace('ResetLinkSent', { email: emailVal, role });
+        } catch (err) {
+            setLoading(false);
+            Alert.alert('Error', err.message || 'Failed to send reset link');
+        }
     };
 
     return (

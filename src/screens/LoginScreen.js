@@ -1,23 +1,32 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Image, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Mail, Lock, Sparkles } from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
 import GlassCard from '../components/GlassCard';
 import GradientButton from '../components/GradientButton';
+import { useUser } from '../context/UserContext';
 
 const LoginScreen = ({ navigation }) => {
+    const { login } = useUser();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
+        const emailVal = email.trim();
+        if (!emailVal || !password) {
+            Alert.alert('Error', 'Please enter email and password');
+            return;
+        }
         setLoading(true);
-        // Simulate login
-        setTimeout(() => {
+        try {
+            await login(emailVal, password);
             setLoading(false);
-            navigation.replace('Main');
-        }, 1500);
+        } catch (err) {
+            setLoading(false);
+            Alert.alert('Error', err.message || 'Login failed');
+        }
     };
 
     return (

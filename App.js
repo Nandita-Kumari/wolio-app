@@ -1,16 +1,19 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, Platform } from 'react-native';
+import { StyleSheet, View, Platform, ActivityIndicator, Text } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { UserProvider } from './src/context/UserContext';
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      <View style={[styles.container, Platform.OS === 'web' && styles.containerWeb]}>
-        <AppNavigator />
-        <StatusBar style="auto" />
-      </View>
+      <UserProvider>
+        <View style={[styles.container, Platform.OS === 'web' && styles.containerWeb]}>
+          <AppNavigator />
+          <StatusBar style="auto" />
+        </View>
+      </UserProvider>
     </SafeAreaProvider>
   );
 }

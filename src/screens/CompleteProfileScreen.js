@@ -18,6 +18,7 @@ import {
 } from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
 import GradientButton from '../components/GradientButton';
+import { useUser } from '../context/UserContext';
 
 const BOARDS = ['CBSE', 'ICSE', 'State Board', 'IB', 'Cambridge', 'Individual'];
 const CLASSES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', 'Individual'];
@@ -27,7 +28,10 @@ const INTERESTS = [
     'Music', 'Sports', 'Literature', 'Languages', 'Economics', 'Politics', 'Other',
 ];
 
-const CompleteProfileScreen = ({ navigation }) => {
+const CompleteProfileScreen = ({ navigation, route }) => {
+    const { setAuthAfterVerify } = useUser();
+    const token = route?.params?.token;
+    const user = route?.params?.user;
     const [board, setBoard] = useState('Individual');
     const [grade, setGrade] = useState('6');
     const [interests, setInterests] = useState([]);
@@ -38,12 +42,17 @@ const CompleteProfileScreen = ({ navigation }) => {
         );
     };
 
+    const finishProfile = () => {
+        if (token && user) setAuthAfterVerify(token, user);
+        else navigation.replace('Main');
+    };
+
     const handleComplete = () => {
-        navigation.replace('Main');
+        finishProfile();
     };
 
     const handleLater = () => {
-        navigation.replace('Main');
+        finishProfile();
     };
 
     return (

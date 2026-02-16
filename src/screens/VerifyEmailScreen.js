@@ -9,17 +9,20 @@ import {
     SafeAreaView,
     KeyboardAvoidingView,
     Platform,
+    Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, Mail, Lock, Lightbulb } from 'lucide-react-native';
 import { COLORS, GRADIENTS, SHADOWS } from '../constants/theme';
 import GradientButton from '../components/GradientButton';
+import { useUser } from '../context/UserContext';
 
 const OTP_LENGTH = 6;
 const DEMO_CODE = '123456';
 
 const VerifyEmailScreen = ({ navigation, route }) => {
-    const email = route?.params?.email ?? 'user@example.com';
+    const email = route?.params?.email ?? '';
+    const { verify } = useUser();
     const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(''));
     const [loading, setLoading] = useState(false);
     const inputRefs = useRef([]);
@@ -51,13 +54,21 @@ const VerifyEmailScreen = ({ navigation, route }) => {
     const otpString = otp.join('');
     const canVerify = otpString.length === OTP_LENGTH;
 
-    const handleVerify = () => {
+    const handleVerify = async () => {
         if (!canVerify || loading) return;
+        if (!email) {
+            Alert.alert('Error', 'Email is missing. Please go back and sign up again.');
+            return;
+        }
         setLoading(true);
-        setTimeout(() => {
+        try {
+            const data = await verify(email, otpString);
             setLoading(false);
-            navigation.replace('CompleteProfile');
-        }, 800);
+            navigation.replace('CompleteProfile', { token: data.token, user: data.user });
+        } catch (err) {
+            setLoading(false);
+            Alert.alert('Error', err.message || 'Invalid or expired OTP');
+        }
     };
 
     const handleResend = () => {

@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
     ScrollView,
     SafeAreaView,
+    Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
 import GradientButton from '../components/GradientButton';
+import { useUser } from '../context/UserContext';
 
 const STEPS = [
     { key: 'account', label: 'Account', active: true },
@@ -28,19 +30,41 @@ const STEPS = [
     { key: 'profile', label: 'Profile', active: false },
 ];
 
-const SignupScreen = ({ navigation }) => {
+const SignupScreen = ({ navigation, route }) => {
+    const { signup: signupApi } = useUser();
+    const role = (route?.params?.role ?? 'Student').toLowerCase() === 'parent' ? 'parent' : 'student';
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
 
-    const handleCreateAccount = () => {
+    const handleCreateAccount = async () => {
+        const name = fullName.trim();
+        const emailVal = email.trim();
+        if (!name || !emailVal || !password || !confirmPassword) {
+            Alert.alert('Error', 'Please fill all fields');
+            return;
+        }
+        if (password !== confirmPassword) {
+            Alert.alert('Error', 'Passwords do not match');
+            return;
+        }
+        if (password.length < 6) {
+            Alert.alert('Error', 'Password must be at least 6 characters');
+            return;
+        }
         setLoading(true);
-        setTimeout(() => {
+        try {
+            await signupApi({ name, email: emailVal, password, confirmPassword, role });
             setLoading(false);
-            navigation.replace('VerifyEmail', { email: email.trim() || 'user@example.com' });
-        }, 1500);
+            navigation.replace('VerifyEmail', { email: emailVal });
+        } catch (err) {
+            setLoading(false);
+            Alert.alert('Error', err.message || 'Signup failed');
+        }
     };
 
     return (
@@ -198,6 +222,33 @@ const SignupScreen = ({ navigation }) => {
                                     hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                                 >
                                     {showPassword ? (
+                                        <EyeOff size={20} color={COLORS.textSecondary} />
+                                    ) : (
+                                        <Eye size={20} color={COLORS.textSecondary} />
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={styles.label}>Confirm Password</Text>
+                            <View style={styles.inputContainer}>
+                                <Lock
+                                    color={COLORS.textSecondary}
+                                    size={20}
+                                    style={styles.inputIcon}
+                                />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Confirm your password"
+                                    placeholderTextColor={COLORS.textSecondary}
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    secureTextEntry={!showConfirmPassword}
+                                />
+                                <TouchableOpacity
+                                    onPress={() => setShowConfirmPassword((p) => !p)}
+                                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                                >
+                                    {showConfirmPassword ? (
                                         <EyeOff size={20} color={COLORS.textSecondary} />
                                     ) : (
                                         <Eye size={20} color={COLORS.textSecondary} />
