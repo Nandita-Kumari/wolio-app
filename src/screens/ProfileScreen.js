@@ -12,6 +12,9 @@ import {
     Share,
     Platform,
     Linking,
+    Modal,
+    TextInput,
+    KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -36,7 +39,7 @@ import {
 } from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
 import { useUser } from '../context/UserContext';
-import { getProfile } from '../services/profileApi';
+import { getProfile, updateProfile } from '../services/profileApi';
 
 const getTimeAgo = (dateStr) => {
     if (!dateStr) return '';
@@ -59,9 +62,18 @@ const ProfileScreen = ({ navigation }) => {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [editVisible, setEditVisible] = useState(false);
+    const [editSaving, setEditSaving] = useState(false);
+    const [editUserName, setEditUserName] = useState('');
+    const [editUserBio, setEditUserBio] = useState('');
+    const [editLocation, setEditLocation] = useState('');
 
     const loadProfile = useCallback(async () => {
-        if (!token) return;
+        if (!token) {
+            setLoading(false);
+            setError('Please log in to view profile');
+            return;
+        }
         setLoading(true);
         setError(null);
         try {
@@ -73,6 +85,31 @@ const ProfileScreen = ({ navigation }) => {
             setLoading(false);
         }
     }, [token]);
+
+    const openEditModal = () => {
+        setEditUserName(profile?.userName ?? user?.name ?? '');
+        setEditUserBio(profile?.userBio ?? '');
+        setEditLocation(profile?.location ?? '');
+        setEditVisible(true);
+    };
+
+    const handleSaveProfile = async () => {
+        if (!token) return;
+        setEditSaving(true);
+        try {
+            const updated = await updateProfile(token, {
+                userName: editUserName.trim() || undefined,
+                userBio: editUserBio.trim() || undefined,
+                location: editLocation.trim() || undefined,
+            });
+            setProfile(updated);
+            setEditVisible(false);
+        } catch (e) {
+            Alert.alert('Error', e.message || 'Failed to update profile');
+        } finally {
+            setEditSaving(false);
+        }
+    };
 
     useEffect(() => {
         loadProfile();
@@ -232,7 +269,7 @@ const ProfileScreen = ({ navigation }) => {
 
                         {/* Edit Profile + Settings */}
                         <View style={styles.actionRow}>
-                            <TouchableOpacity style={styles.editProfileBtn} activeOpacity={0.85}>
+                            <TouchableOpacity style={styles.editProfileBtn} onPress={openEditModal} activeOpacity={0.85}>
                                 <LinearGradient colors={GRADIENTS.primary} style={styles.editProfileGradient}>
                                     <Pencil size={18} color="#fff" />
                                     <Text style={styles.editProfileText}>Edit Profile</Text>
@@ -361,6 +398,58 @@ const ProfileScreen = ({ navigation }) => {
                     <View style={{ height: 100 }} />
                 </ScrollView>
             </SafeAreaView>
+
+            {/* Edit Profile Modal */}
+            <Modal visible={editVisible} animationType="slide" transparent>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Edit Profile</Text>
+                        <TextInput
+                            style={styles.modalInput}
+                            placeholder="Display name"
+                            placeholderTextColor={COLORS.textSecondary}
+                            value={editUserName}
+                            onChangeText={setEditUserName}
+                            autoCapitalize="words"
+                        />
+                        <TextInput
+                            style={[styles.modalInput, styles.modalInputMultiline]}
+                            placeholder="Bio"
+                            placeholderTextColor={COLORS.textSecondary}
+                            value={editUserBio}
+                            onChangeText={setEditUserBio}
+                            multiline
+                            numberOfLines={3}
+                        />
+                        <TextInput
+                            style={styles.modalInput}
+                            placeholder="Location"
+                            placeholderTextColor={COLORS.textSecondary}
+                            value={editLocation}
+                            onChangeText={setEditLocation}
+                        />
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditVisible(false)} disabled={editSaving}>
+                                <Text style={styles.modalCancelText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.modalSaveBtn}
+                                onPress={handleSaveProfile}
+                                disabled={editSaving}
+                                activeOpacity={0.8}
+                            >
+                                <LinearGradient colors={GRADIENTS.primary} style={styles.modalSaveGradient}>
+                                    {editSaving ? (
+                                        <ActivityIndicator size="small" color="#fff" />
+                                    ) : (
+                                        <Text style={styles.modalSaveText}>Save</Text>
+                                    )}
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
         </View>
     );
 };
@@ -556,6 +645,41 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
     },
     signOutText: { fontSize: 16, fontWeight: '600', color: COLORS.danger, marginLeft: 10 },
+
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        padding: 24,
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 24,
+        ...SHADOWS.medium,
+    },
+    modalTitle: { fontSize: 20, fontWeight: '700', color: COLORS.text, marginBottom: 20 },
+    modalInput: {
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        fontSize: 16,
+        color: COLORS.text,
+        marginBottom: 14,
+    },
+    modalInputMultiline: { minHeight: 80, textAlignVertical: 'top' },
+    modalActions: { flexDirection: 'row', marginTop: 8, gap: 12 },
+    modalCancelBtn: { flex: 1, paddingVertical: 14, alignItems: 'center' },
+    modalCancelText: { fontSize: 16, fontWeight: '600', color: COLORS.textSecondary },
+    modalSaveBtn: { flex: 1, borderRadius: 14, overflow: 'hidden' },
+    modalSaveGradient: {
+        paddingVertical: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalSaveText: { fontSize: 16, fontWeight: '600', color: '#fff' },
 });
 
 export default ProfileScreen;

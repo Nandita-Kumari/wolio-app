@@ -110,12 +110,12 @@ const MainTabs = () => {
                 tabBarLabelStyle: {
                     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
                     fontSize: 11,
-                    marginTop: 4,
+                    marginTop: 10,
                     marginBottom: 4,
                     fontWeight: '500',
                 },
                 tabBarActiveLabelStyle: {
-                    fontWeight: '700',
+                    fontWeight: '900',
                     fontSize: 12,
                     marginBottom: 4,
                 },

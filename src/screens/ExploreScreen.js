@@ -31,6 +31,7 @@ import {
 } from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
 import GradientButton from '../components/GradientButton';
+import { useUser } from '../context/UserContext';
 import { getExploreData } from '../services/exploreApi';
 
 const { width } = Dimensions.get('window');
@@ -56,6 +57,7 @@ const formatStudents = (num) => {
 };
 
 const ExploreScreen = () => {
+    const { token } = useUser();
     const [selectedCategoryId, setSelectedCategoryId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -68,7 +70,11 @@ const ExploreScreen = () => {
         setLoading(true);
         setError(null);
         try {
-            const data = await getExploreData();
+            if (!token) {
+                setError('Please log in to view Explore');
+                return;
+            }
+            const data = await getExploreData(token);
             setStats({
                 totalRegisteredCourses: data.totalRegisteredCourses ?? 0,
                 totalAppUsers: data.totalAppUsers ?? 0,
@@ -111,7 +117,7 @@ const ExploreScreen = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [token]);
 
     useEffect(() => {
         loadExplore();
