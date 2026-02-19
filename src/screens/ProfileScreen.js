@@ -5,7 +5,9 @@ import {
     StyleSheet,
     SafeAreaView,
     ScrollView,
+    Dimensions,
     TouchableOpacity,
+    Pressable,
     Image,
     ActivityIndicator,
     Alert,
@@ -17,6 +19,7 @@ import {
     KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import {
     Camera,
     Pencil,
@@ -27,15 +30,22 @@ import {
     Trophy,
     Flame,
     Star,
+    Zap,
+    Award,
+    Users,
     MessageCircle,
     Heart,
     Share2,
     LogOut,
     Copy,
     ArrowLeft,
-    MoreVertical,
-    Shield,
     BookOpen,
+    Sparkles,
+    Check,
+    Shield,
+    User,
+    X,
+    Save,
 } from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
 import { useUser } from '../context/UserContext';
@@ -65,13 +75,15 @@ const ProfileScreen = ({ navigation }) => {
     const [editVisible, setEditVisible] = useState(false);
     const [editSaving, setEditSaving] = useState(false);
     const [editUserName, setEditUserName] = useState('');
+    const [editHandle, setEditHandle] = useState('');
     const [editUserBio, setEditUserBio] = useState('');
     const [editLocation, setEditLocation] = useState('');
+    const [editWebsite, setEditWebsite] = useState('');
 
     const loadProfile = useCallback(async () => {
         if (!token) {
             setLoading(false);
-            setError('Please log in to view profile');
+            setError(null);
             return;
         }
         setLoading(true);
@@ -87,9 +99,14 @@ const ProfileScreen = ({ navigation }) => {
     }, [token]);
 
     const openEditModal = () => {
-        setEditUserName(profile?.userName ?? user?.name ?? '');
+        const dn = profile?.userName ?? user?.name ?? '';
+        const h = profile?.handle ?? (dn ? '@' + dn.toLowerCase().replace(/\s+/g, '') : '') ?? '@user';
+        const w = profile?.website ?? 'learnflow.com';
+        setEditUserName(dn);
+        setEditHandle(h);
         setEditUserBio(profile?.userBio ?? '');
         setEditLocation(profile?.location ?? '');
+        setEditWebsite(w);
         setEditVisible(true);
     };
 
@@ -101,6 +118,8 @@ const ProfileScreen = ({ navigation }) => {
                 userName: editUserName.trim() || undefined,
                 userBio: editUserBio.trim() || undefined,
                 location: editLocation.trim() || undefined,
+                website: editWebsite.trim() || undefined,
+                handle: editHandle.trim() || undefined,
             });
             setProfile(updated);
             setEditVisible(false);
@@ -135,13 +154,13 @@ const ProfileScreen = ({ navigation }) => {
         Share.share({ message: text, title: 'Wolio' });
     };
 
-    const displayName = profile?.userName || user?.name || 'Student';
-    const handleStr = '@' + (displayName.toLowerCase().replace(/\s+/g, '') || 'user');
-    const wolioId = profile?.wolioId || user?.wolioId || '—';
-    const userCourses = profile?.userCourses ?? 0;
-    const joinedYear = profile?.joinedYear ? `Joined January ${profile.joinedYear}` : '';
+    const displayName = profile?.userName || user?.name || (token ? 'Student' : 'Guest Learner');
+    const handleStr = profile?.handle || (token ? '@' + (displayName.toLowerCase().replace(/\s+/g, '') || 'user') : '@guest');
+    const wolioId = profile?.wolioId || user?.wolioId || (token ? '—' : 'WL-2024-ET-3456');
+    const userCourses = profile?.userCourses ?? 12;
+    const joinedStr = profile?.joinedDate || (profile?.joinedYear ? `Joined January ${profile.joinedYear}` : '') || 'Joined February 2026';
 
-    if (loading && !profile) {
+    if (loading && token && !profile) {
         return (
             <View style={styles.loadingContainer}>
                 <LinearGradient colors={[COLORS.background, '#F8F5FF']} style={StyleSheet.absoluteFill} />
@@ -152,141 +171,125 @@ const ProfileScreen = ({ navigation }) => {
     }
 
     const activityItems = [
-        ...(profile?.activity || []).map((a, i) => ({
-            id: `act-${a.bookTitle}-${a.lastChapterNumber}`,
-            type: 'chapter',
-            icon: Trophy,
-            iconBg: COLORS.primary,
-            title: `Completed ${a.bookTitle} Chapter ${a.lastChapterNumber}`,
-            description: `${a.lastChapterRead || 'Chapter'} mastered! 65% course progress.`,
-            progressPercent: 65,
-            timeAgo: getTimeAgo(a.lastDateRead),
-            reads: 24,
-            comments: 5,
-            likes: 24,
-        })),
-        { id: 'streak', type: 'streak', icon: Flame, iconBg: '#F97316', title: '15 Day Streak! 🔥', description: 'Studied consistently for 15 days straight. Keep it up!', timeAgo: '1 day ago', likes: 48, comments: 12 },
-        { id: 'course', type: 'course', icon: BookOpen, iconBg: COLORS.primary, title: 'Started a new course', description: 'Beginning Calculus Fundamentals - Chapter 1: Limits', timeAgo: '3 days ago', likes: 15, comments: 3 },
-        { id: 'quiz', type: 'quiz', icon: Star, iconBg: '#22C55E', title: 'Perfect Quiz Score!', description: 'Scored 100% on Quantum Physics Quiz #8', timeAgo: '5 days ago', likes: 62, comments: 18 },
-    ].slice(0, 6);
+        { id: 'chapter', icon: Trophy, iconGradient: ['#C084FC', '#EC4899'], title: 'Completed Quantum Mechanics Chapter 12', description: 'Wave Functions mastered! 65% course progress', timeAgo: '2 hours ago', comments: 5, likes: 24, hasSparkle: true },
+        { id: 'streak', icon: Flame, iconGradient: ['#EF4444', '#F97316'], title: '15 Day Streak! 🔥', description: 'Studied consistently for 15 days straight. Keep it up!', timeAgo: '1 day ago', likes: 48, comments: 12, hasSparkle: false },
+        { id: 'course', icon: BookOpen, iconGradient: ['#C084FC', '#EC4899'], title: 'Started a new course', description: 'Beginning Calculus Fundamentals - Chapter 1: Limits', timeAgo: '3 days ago', likes: 15, comments: 3, hasSparkle: false },
+        { id: 'quiz', icon: Star, iconGradient: ['#10B981', '#14B8A6'], title: 'Perfect Quiz Score!', description: 'Scored 100% on Quantum Physics Quiz #8', timeAgo: '5 days ago', likes: 62, comments: 18, hasSparkle: false },
+    ];
 
-    const achievementItems = profile?.achievements || [];
+    const defaultAchievements = [
+        { id: 'quick', title: 'Quick Learner', description: 'Complete 5 lessons in one day', icon: Zap, iconGradient: ['#FBBF24', '#F59E0B'], completed: true, date: 'Feb 1, 2024' },
+        { id: 'streak', title: 'Streak Master', description: 'Maintain 15 day streak', icon: Flame, iconGradient: ['#EF4444', '#F97316'], completed: true, date: 'Feb 10, 2024' },
+        { id: 'perfect', title: 'Perfect Score', description: 'Get 100% on a quiz', icon: Star, iconGradient: ['#C084FC', '#EC4899'], completed: true, date: 'Feb 7, 2024' },
+        { id: 'finisher', title: 'Course Finisher', description: 'Complete your first course', icon: Trophy, iconGradient: ['#FBBF24', '#F59E0B'], completed: false, date: null },
+        { id: 'nightowl', title: 'Night Owl', description: 'Study after midnight', icon: Award, iconGradient: ['#C084FC', '#E9D5FF'], completed: false, date: null },
+        { id: 'social', title: 'Social Learner', description: 'Help 10 other students', icon: Users, iconGradient: ['#EC4899', '#F472B6'], completed: true, date: 'Feb 15, 2024' },
+    ];
+    const achievementItems = defaultAchievements;
+
+    const location = profile?.location || 'San Francisco, CA';
+    const website = profile?.website || 'emmastudies.com';
 
     return (
         <View style={styles.container}>
             <LinearGradient colors={[COLORS.background, '#F8F5FF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
             <SafeAreaView style={styles.safeArea}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
-                    activeOpacity={0.8}
-                >
-                    <ArrowLeft size={24} color={COLORS.text} />
-                </TouchableOpacity>
+                <View style={styles.scrollWrapper}>
                 <ScrollView
                     style={styles.scrollView}
                     contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
+                    showsVerticalScrollIndicator={true}
+                    bounces={true}
+                    overScrollMode="always"
                 >
-                    {/* Cover */}
-                    <View style={styles.coverWrap}>
+                    {/* Top Nav: Back + Back to Dashboard */}
+                    <View style={styles.topNav}>
+                        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+                            <ArrowLeft size={22} color={COLORS.text} />
+                        </TouchableOpacity>
+                        <Text style={styles.backToDashboard}>Back to Dashboard</Text>
+                    </View>
+                    {/* Banner with avatar overlay and settings */}
+                    <View style={styles.bannerWrap}>
                         <LinearGradient
-                            colors={['#A855F7', '#C084FC', '#EC4899', '#F97316']}
+                            colors={['#F97316', '#EC4899', '#A855F7', '#6366F1']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
-                            style={styles.cover}
+                            style={styles.banner}
                         />
-                        <TouchableOpacity style={styles.editCoverBtn} activeOpacity={0.8}>
-                            <Camera size={16} color={COLORS.text} />
-                            <Text style={styles.editCoverText}>Edit Cover</Text>
+                        <TouchableOpacity style={styles.settingsBannerBtn} activeOpacity={0.8}>
+                            <LinearGradient colors={GRADIENTS.primary} style={styles.settingsBannerGradient}>
+                                <Settings size={18} color="#fff" />
+                            </LinearGradient>
                         </TouchableOpacity>
+                        <View style={styles.avatarOverlay}>
+                            <View style={styles.avatarWrap}>
+                                {profile?.profilePhoto ? (
+                                    <Image source={{ uri: profile.profilePhoto }} style={styles.avatar} />
+                                ) : (
+                                    <View style={styles.avatarPlaceholder} />
+                                )}
+                                <TouchableOpacity style={styles.avatarEditBtn} activeOpacity={0.8}>
+                                    <LinearGradient colors={GRADIENTS.primary} style={styles.avatarEditGradient}>
+                                        <Camera size={14} color="#fff" />
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
                     </View>
 
-                    {/* Avatar */}
-                    <View style={styles.avatarSection}>
-                        <View style={styles.avatarWrap}>
-                            {profile?.profilePhoto ? (
-                                <Image source={{ uri: profile.profilePhoto }} style={styles.avatar} />
-                            ) : (
-                                <LinearGradient colors={GRADIENTS.primary} style={styles.avatarPlaceholder}>
-                                    <Text style={styles.avatarInitial}>{displayName.charAt(0)}</Text>
-                                </LinearGradient>
-                            )}
-                            <TouchableOpacity style={styles.avatarEditBtn} activeOpacity={0.8}>
-                                <LinearGradient colors={GRADIENTS.primary} style={styles.avatarEditGradient}>
-                                    <Camera size={14} color="#fff" />
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        </View>
-                        <View style={styles.nameRow}>
-                            <Text style={styles.userName}>{displayName} <Text style={styles.onlineDot}>●</Text></Text>
-                            <TouchableOpacity style={styles.moreOptionsBtn} hitSlop={12}>
-                                <MoreVertical size={22} color={COLORS.text} />
-                            </TouchableOpacity>
-                        </View>
+                    {/* Profile info - left aligned */}
+                    <View style={styles.profileSection}>
+                        <Text style={styles.userName}>{displayName} <Text style={styles.onlineDot}>●</Text></Text>
                         <Text style={styles.handle}>{handleStr}</Text>
 
-                        {/* Wolio ID - single line tag */}
                         <TouchableOpacity style={styles.wolioIdCard} onPress={handleCopyWolioId} activeOpacity={0.8}>
-                            <Shield size={18} color={COLORS.primary} style={styles.wolioIdShield} />
-                            <Text style={styles.wolioIdValueInline}>WOLIO ID {wolioId}</Text>
-                            <Copy size={18} color={COLORS.primary} />
+                            <LinearGradient
+                                colors={['#6366F1', '#C084FC']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.wolioIdShieldWrap}
+                            >
+                                <Shield size={20} color="#fff" strokeWidth={2} />
+                            </LinearGradient>
+                            <View style={styles.wolioIdCenter}>
+                                <Text style={styles.wolioIdLabel}>WOLIO ID</Text>
+                                <Text style={styles.wolioIdValue}>{wolioId}</Text>
+                            </View>
+                            <Copy size={20} color="#8247E5" strokeWidth={2} />
                         </TouchableOpacity>
 
-                        {profile?.userBio ? (
-                            <Text style={styles.bio}>{profile.userBio}</Text>
-                        ) : null}
+                        {!token && <Text style={styles.browsingStatus}>Browsing as guest</Text>}
 
-                        {/* Meta row */}
                         <View style={styles.metaRow}>
-                            {profile?.location ? (
-                                <View style={styles.metaItem}>
-                                    <MapPin size={14} color={COLORS.textSecondary} />
-                                    <Text style={styles.metaText}>{profile.location}</Text>
-                                </View>
-                            ) : null}
-                            <TouchableOpacity
-                                style={styles.metaItem}
-                                onPress={() => {
-                                    const url = profile?.website || 'emmastudies.com';
-                                    Linking.openURL(url.startsWith('http') ? url : `https://${url}`);
-                                }}
-                                activeOpacity={0.7}
-                            >
+                            <View style={styles.metaItem}>
+                                <MapPin size={14} color={COLORS.textSecondary} />
+                                <Text style={styles.metaText}>{location}</Text>
+                            </View>
+                            <TouchableOpacity style={styles.metaItem} onPress={() => Linking.openURL(website.startsWith('http') ? website : `https://${website}`)} activeOpacity={0.7}>
                                 <LinkIcon size={14} color={COLORS.textSecondary} />
-                                <Text style={[styles.metaText, styles.metaLink]}>
-                                    {profile?.website || 'emmastudies.com'}
-                                </Text>
+                                <Text style={[styles.metaText, styles.metaLink]}>{website}</Text>
                             </TouchableOpacity>
-                            {joinedYear ? (
-                                <View style={styles.metaItem}>
-                                    <Calendar size={14} color={COLORS.textSecondary} />
-                                    <Text style={styles.metaText}>{joinedYear}</Text>
-                                </View>
-                            ) : null}
                         </View>
-                        <Text style={styles.coursesCount}>{userCourses} Course{userCourses !== 1 ? 's' : ''}</Text>
+                        <View style={styles.metaRow}>
+                            <View style={styles.metaItem}>
+                                <Calendar size={14} color={COLORS.textSecondary} />
+                                <Text style={styles.metaText}>{joinedStr}</Text>
+                            </View>
+                        </View>
+                        <Text style={styles.coursesCount}>{userCourses} Courses</Text>
 
-                        {/* Edit Profile + Settings */}
-                        <View style={styles.actionRow}>
-                            <TouchableOpacity style={styles.editProfileBtn} onPress={openEditModal} activeOpacity={0.85}>
-                                <LinearGradient colors={GRADIENTS.primary} style={styles.editProfileGradient}>
-                                    <Pencil size={18} color="#fff" />
-                                    <Text style={styles.editProfileText}>Edit Profile</Text>
-                                </LinearGradient>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.settingsBtn} activeOpacity={0.8}>
-                                <Settings size={24} color={COLORS.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity style={styles.editProfileBtn} onPress={token ? openEditModal : undefined} activeOpacity={0.85}>
+                            <Pencil size={18} color={COLORS.text} />
+                            <Text style={styles.editProfileText}>Edit Profile</Text>
+                        </TouchableOpacity>
                     </View>
 
                     {/* Tabs */}
                     <View style={styles.tabsRow}>
-                        <TouchableOpacity
+                        <Pressable
                             style={[styles.tab, activeTab === 'activity' && styles.tabActive]}
                             onPress={() => setActiveTab('activity')}
-                            activeOpacity={0.8}
                         >
                             {activeTab === 'activity' ? (
                                 <LinearGradient colors={GRADIENTS.primary} style={styles.tabActiveGradient}>
@@ -295,73 +298,57 @@ const ProfileScreen = ({ navigation }) => {
                             ) : (
                                 <Text style={styles.tabText}>Activity</Text>
                             )}
-                        </TouchableOpacity>
-                        <TouchableOpacity
+                        </Pressable>
+                        <Pressable
                             style={[styles.tab, activeTab === 'achievements' && styles.tabActive]}
                             onPress={() => setActiveTab('achievements')}
-                            activeOpacity={0.8}
                         >
-                            <Text style={[styles.tabText, activeTab === 'achievements' && styles.tabTextActivePlain]}>Achievements</Text>
-                        </TouchableOpacity>
+                            {activeTab === 'achievements' ? (
+                                <LinearGradient colors={GRADIENTS.primary} style={styles.tabActiveGradient}>
+                                    <Text style={styles.tabTextActive}>Achievements</Text>
+                                </LinearGradient>
+                            ) : (
+                                <Text style={styles.tabText}>Achievements</Text>
+                            )}
+                        </Pressable>
                     </View>
 
-                    {/* Content */}
+                    {/* Tab content */}
+                    <View style={styles.tabContent}>
                     {activeTab === 'activity' && (
                         <View style={styles.cardsSection}>
                             {activityItems.map((item) => {
                                 const IconComponent = item.icon;
-                                const isChapter = item.type === 'chapter';
                                 return (
                                     <View key={item.id} style={styles.activityCard}>
-                                        <View style={[styles.activityIconWrap, { backgroundColor: item.iconBg + '22' }]}>
-                                            <IconComponent size={22} color={item.iconBg} />
-                                        </View>
+                                        <LinearGradient colors={item.iconGradient} style={styles.activityIconWrap}>
+                                            <IconComponent size={24} color="#fff" strokeWidth={2} />
+                                        </LinearGradient>
                                         <View style={styles.activityBody}>
                                             <Text style={styles.activityTitle}>{item.title}</Text>
                                             <Text style={styles.activityDesc}>{item.description}</Text>
-                                            {isChapter && item.progressPercent != null && (
-                                                <View style={styles.progressBarWrap}>
-                                                    <LinearGradient
-                                                        colors={GRADIENTS.primary}
-                                                        start={{ x: 0, y: 0 }}
-                                                        end={{ x: 1, y: 0 }}
-                                                        style={[styles.progressBarFill, { width: `${item.progressPercent}%` }]}
-                                                    />
-                                                </View>
-                                            )}
                                             <Text style={styles.activityTime}>{item.timeAgo}</Text>
                                             <View style={styles.activityActions}>
-                                                {isChapter ? (
-                                                    <>
-                                                        <View style={styles.activityAction}>
-                                                            <BookOpen size={16} color={COLORS.textSecondary} />
-                                                            <Text style={styles.activityActionText}>{item.reads ?? 24}</Text>
-                                                        </View>
-                                                        <View style={styles.activityAction}>
-                                                            <MessageCircle size={16} color={COLORS.textSecondary} />
-                                                            <Text style={styles.activityActionText}>{item.comments ?? 0}</Text>
-                                                        </View>
-                                                        <TouchableOpacity onPress={() => handleShare(item)}>
-                                                            <Share2 size={16} color={COLORS.textSecondary} />
-                                                        </TouchableOpacity>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <View style={styles.activityAction}>
-                                                            <Heart size={16} color={COLORS.textSecondary} />
-                                                            <Text style={styles.activityActionText}>{item.likes ?? 0}</Text>
-                                                        </View>
-                                                        <View style={styles.activityAction}>
-                                                            <MessageCircle size={16} color={COLORS.textSecondary} />
-                                                            <Text style={styles.activityActionText}>{item.comments ?? 0}</Text>
-                                                        </View>
-                                                        <TouchableOpacity onPress={() => handleShare(item)}>
-                                                            <Share2 size={16} color={COLORS.textSecondary} />
-                                                        </TouchableOpacity>
-                                                    </>
-                                                )}
+                                                <View style={styles.activityAction}>
+                                                    <Heart size={16} color={COLORS.textSecondary} />
+                                                    <Text style={styles.activityActionText}>{item.likes}</Text>
+                                                </View>
+                                                <View style={styles.activityAction}>
+                                                    <MessageCircle size={16} color={COLORS.textSecondary} />
+                                                    <Text style={styles.activityActionText}>{item.comments}</Text>
+                                                </View>
+                                                <TouchableOpacity onPress={() => handleShare(item)}>
+                                                    <Share2 size={16} color={COLORS.textSecondary} />
+                                                </TouchableOpacity>
                                             </View>
                                         </View>
+                                        {item.hasSparkle && (
+                                            <TouchableOpacity style={styles.sparkleBtn} activeOpacity={0.8}>
+                                                <LinearGradient colors={GRADIENTS.primary} style={styles.sparkleGradient}>
+                                                    <Sparkles size={18} color="#fff" />
+                                                </LinearGradient>
+                                            </TouchableOpacity>
+                                        )}
                                     </View>
                                 );
                             })}
@@ -369,27 +356,42 @@ const ProfileScreen = ({ navigation }) => {
                     )}
 
                     {activeTab === 'achievements' && (
-                        <View style={styles.cardsSection}>
-                            {achievementItems.length === 0 ? (
-                                <Text style={styles.emptyText}>No achievements yet. Keep learning!</Text>
-                            ) : (
-                                achievementItems.map((a, i) => (
-                                    <View key={a.achievementTitle + i} style={styles.activityCard}>
-                                        <View style={[styles.activityIconWrap, { backgroundColor: COLORS.primary + '22' }]}>
-                                            <Trophy size={22} color={COLORS.primary} />
-                                        </View>
-                                        <View style={styles.activityBody}>
-                                            <Text style={styles.activityTitle}>{a.achievementTitle}</Text>
-                                            <Text style={styles.activityDesc}>{a.achievement}</Text>
-                                            <Text style={styles.activityTime}>{a.achievementDate}</Text>
-                                        </View>
+                        <View style={styles.achievementsGrid}>
+                            {achievementItems.map((item) => {
+                                const IconComponent = item.icon;
+                                return (
+                                    <View key={item.id} style={styles.achievementCard}>
+                                        <LinearGradient
+                                            colors={['#FFFFFF', '#FFF7ED', '#FFF1F2']}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 1 }}
+                                            style={styles.achievementCardGradient}
+                                        >
+                                            {item.completed && (
+                                                <View style={styles.achievementCheck}>
+                                                    <Check size={12} color="#fff" strokeWidth={3} />
+                                                </View>
+                                            )}
+                                            <View style={styles.achievementBadgeWrap}>
+                                                <LinearGradient colors={item.iconGradient} style={styles.achievementBadge}>
+                                                    <IconComponent size={24} color="#fff" strokeWidth={2} />
+                                                </LinearGradient>
+                                            </View>
+                                            <Text style={styles.achievementCardTitle}>{item.title}</Text>
+                                            <Text style={styles.achievementCardDesc}>{item.description}</Text>
+                                            {item.completed && item.date && (
+                                                <View style={styles.achievementDateBadge}>
+                                                    <Text style={styles.achievementDateText}>{item.date}</Text>
+                                                </View>
+                                            )}
+                                        </LinearGradient>
                                     </View>
-                                ))
-                            )}
+                                );
+                            })}
                         </View>
                     )}
+                    </View>
 
-                    {/* Sign Out - white bg, red border */}
                     <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>
                         <LogOut size={20} color={COLORS.danger} />
                         <Text style={styles.signOutText}>Sign Out</Text>
@@ -397,39 +399,132 @@ const ProfileScreen = ({ navigation }) => {
 
                     <View style={{ height: 100 }} />
                 </ScrollView>
+                </View>
             </SafeAreaView>
 
-            {/* Edit Profile Modal */}
-            <Modal visible={editVisible} animationType="slide" transparent>
+            {/* Edit Profile Modal - Popup */}
+            <Modal visible={editVisible} animationType="fade" transparent>
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
+                    <TouchableOpacity
+                        style={styles.modalBackdrop}
+                        activeOpacity={1}
+                        onPress={() => !editSaving && setEditVisible(false)}
+                    />
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Edit Profile</Text>
-                        <TextInput
-                            style={styles.modalInput}
-                            placeholder="Display name"
-                            placeholderTextColor={COLORS.textSecondary}
-                            value={editUserName}
-                            onChangeText={setEditUserName}
-                            autoCapitalize="words"
-                        />
-                        <TextInput
-                            style={[styles.modalInput, styles.modalInputMultiline]}
-                            placeholder="Bio"
-                            placeholderTextColor={COLORS.textSecondary}
-                            value={editUserBio}
-                            onChangeText={setEditUserBio}
-                            multiline
-                            numberOfLines={3}
-                        />
-                        <TextInput
-                            style={styles.modalInput}
-                            placeholder="Location"
-                            placeholderTextColor={COLORS.textSecondary}
-                            value={editLocation}
-                            onChangeText={setEditLocation}
-                        />
+                        <View style={styles.modalHeader}>
+                            <View style={styles.modalTitleWrap}>
+                                <Svg width={160} height={28}>
+                                    <Defs>
+                                        <SvgLinearGradient id="editProfileGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <Stop offset="0%" stopColor="#8B5CF6" />
+                                            <Stop offset="50%" stopColor="#D946EF" />
+                                            <Stop offset="100%" stopColor="#EC4899" />
+                                        </SvgLinearGradient>
+                                    </Defs>
+                                    <SvgText
+                                        x={0}
+                                        y={22}
+                                        fill="url(#editProfileGrad)"
+                                        fontSize={22}
+                                        fontWeight="bold"
+                                    >
+                                        Edit Profile
+                                    </SvgText>
+                                </Svg>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.modalCloseBtn}
+                                onPress={() => !editSaving && setEditVisible(false)}
+                                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                            >
+                                <X size={22} color={COLORS.text} />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView
+                            style={styles.modalScroll}
+                            contentContainerStyle={styles.modalScrollContent}
+                            showsVerticalScrollIndicator={true}
+                            keyboardShouldPersistTaps="handled"
+                            bounces={true}
+                        >
+                            <View style={styles.modalField}>
+                                <User size={18} color={COLORS.textSecondary} style={styles.modalFieldIcon} />
+                                <View style={styles.modalFieldBody}>
+                                    <Text style={styles.modalFieldLabel}>Full Name</Text>
+                                    <TextInput
+                                        style={styles.modalInput}
+                                        placeholder="Full name"
+                                        placeholderTextColor={COLORS.textSecondary}
+                                        value={editUserName}
+                                        onChangeText={setEditUserName}
+                                        autoCapitalize="words"
+                                    />
+                                </View>
+                            </View>
+                            <View style={styles.modalField}>
+                                <User size={18} color={COLORS.textSecondary} style={styles.modalFieldIcon} />
+                                <View style={styles.modalFieldBody}>
+                                    <Text style={styles.modalFieldLabel}>Username</Text>
+                                    <TextInput
+                                        style={styles.modalInput}
+                                        placeholder="@username"
+                                        placeholderTextColor={COLORS.textSecondary}
+                                        value={editHandle}
+                                        onChangeText={setEditHandle}
+                                        autoCapitalize="none"
+                                    />
+                                </View>
+                            </View>
+                            <View style={styles.modalField}>
+                                <Pencil size={18} color={COLORS.textSecondary} style={styles.modalFieldIcon} />
+                                <View style={styles.modalFieldBody}>
+                                    <Text style={styles.modalFieldLabel}>Bio</Text>
+                                    <TextInput
+                                        style={[styles.modalInput, styles.modalInputMultiline]}
+                                        placeholder="Tell us about yourself..."
+                                        placeholderTextColor={COLORS.textSecondary}
+                                        value={editUserBio}
+                                        onChangeText={setEditUserBio}
+                                        multiline
+                                        numberOfLines={3}
+                                    />
+                                </View>
+                            </View>
+                            <View style={styles.modalField}>
+                                <MapPin size={18} color={COLORS.textSecondary} style={styles.modalFieldIcon} />
+                                <View style={styles.modalFieldBody}>
+                                    <Text style={styles.modalFieldLabel}>Location</Text>
+                                    <TextInput
+                                        style={styles.modalInput}
+                                        placeholder="San Francisco, CA"
+                                        placeholderTextColor={COLORS.textSecondary}
+                                        value={editLocation}
+                                        onChangeText={setEditLocation}
+                                    />
+                                </View>
+                            </View>
+                            <View style={styles.modalField}>
+                                <LinkIcon size={18} color={COLORS.textSecondary} style={styles.modalFieldIcon} />
+                                <View style={styles.modalFieldBody}>
+                                    <Text style={styles.modalFieldLabel}>Website</Text>
+                                    <TextInput
+                                        style={styles.modalInput}
+                                        placeholder="learnflow.com"
+                                        placeholderTextColor={COLORS.textSecondary}
+                                        value={editWebsite}
+                                        onChangeText={setEditWebsite}
+                                        autoCapitalize="none"
+                                        keyboardType="url"
+                                    />
+                                </View>
+                            </View>
+                        </ScrollView>
                         <View style={styles.modalActions}>
-                            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditVisible(false)} disabled={editSaving}>
+                            <TouchableOpacity
+                                style={styles.modalCancelBtn}
+                                onPress={() => setEditVisible(false)}
+                                disabled={editSaving}
+                            >
                                 <Text style={styles.modalCancelText}>Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
@@ -442,7 +537,10 @@ const ProfileScreen = ({ navigation }) => {
                                     {editSaving ? (
                                         <ActivityIndicator size="small" color="#fff" />
                                     ) : (
-                                        <Text style={styles.modalSaveText}>Save</Text>
+                                        <>
+                                            <Save size={18} color="#fff" style={{ marginRight: 8 }} />
+                                            <Text style={styles.modalSaveText}>Save Changes</Text>
+                                        </>
                                     )}
                                 </LinearGradient>
                             </TouchableOpacity>
@@ -457,143 +555,142 @@ const ProfileScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     safeArea: { flex: 1 },
+    scrollWrapper: { flex: 1, minHeight: 0 },
     scrollView: { flex: 1 },
-    scrollContent: { paddingBottom: 24 },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+    scrollContent: { paddingBottom: 120 },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { marginTop: 12, fontSize: 15, color: COLORS.textSecondary },
 
+    topNav: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        paddingTop: Platform.OS === 'ios' ? 8 : 12,
+    },
     backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: '#fff',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+        ...SHADOWS.small,
+    },
+    backToDashboard: { fontSize: 15, fontWeight: '600', color: COLORS.text },
+
+    bannerWrap: { position: 'relative', height: 160 },
+    banner: { width: '100%', height: '100%', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+    settingsBannerBtn: {
         position: 'absolute',
-        top: Platform.OS === 'ios' ? 56 : 44,
-        left: 16,
-        zIndex: 10,
+        bottom: -45,
+        right: 24,
+        borderRadius: 20,
+        overflow: 'hidden',
+    },
+    settingsBannerGradient: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.9)',
         justifyContent: 'center',
         alignItems: 'center',
-        ...SHADOWS.small,
     },
-
-    coverWrap: { position: 'relative', height: 140 },
-    cover: { width: '100%', height: '100%' },
-    editCoverBtn: {
+    avatarOverlay: {
         position: 'absolute',
-        top: 12,
-        right: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 20,
-        ...SHADOWS.small,
+        bottom: -44,
+        left: 24,
     },
-    editCoverText: { fontSize: 13, fontWeight: '600', color: COLORS.text, marginLeft: 6 },
-
-    avatarSection: { alignItems: 'center', paddingHorizontal: 24, marginTop: -50, marginBottom: 20 },
-    avatarWrap: { position: 'relative', marginBottom: 12 },
-    avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 4, borderColor: '#fff', backgroundColor: '#f0f0f0' },
-    avatarPlaceholder: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        borderWidth: 4,
-        borderColor: '#fff',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    avatarInitial: { fontSize: 36, fontWeight: '700', color: '#fff' },
+    avatarWrap: { position: 'relative' },
+    avatar: { width: 88, height: 88, borderRadius: 44, borderWidth: 3, borderColor: '#fff', backgroundColor: '#E9D5FF' },
+    avatarPlaceholder: { width: 88, height: 88, borderRadius: 44, borderWidth: 3, borderColor: '#fff', backgroundColor: '#E9D5FF' },
     avatarEditBtn: {
         position: 'absolute',
         bottom: 0,
         right: 0,
-        borderRadius: 18,
+        borderRadius: 16,
         overflow: 'hidden',
         borderWidth: 2,
         borderColor: '#fff',
     },
     avatarEditGradient: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    nameRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 4,
-        width: '100%',
-        position: 'relative',
-    },
-    userName: { fontSize: 24, fontWeight: '700', color: COLORS.text },
-    onlineDot: { fontSize: 12, color: '#3B82F6' },
-    moreOptionsBtn: { position: 'absolute', right: 0, padding: 8, zIndex: 1 },
-    handle: { fontSize: 14, color: COLORS.textSecondary, marginBottom: 14 },
+
+    profileSection: { paddingHorizontal: 24, paddingTop: 56, marginBottom: 20 },
+    userName: { fontSize: 22, fontWeight: '700', color: COLORS.text, marginBottom: 4 },
+    onlineDot: { fontSize: 14, color: '#3B82F6' },
+    handle: { fontSize: 14, color: COLORS.textSecondary, marginBottom: 12 },
     wolioIdCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(168, 85, 247, 0.12)',
-        borderRadius: 12,
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        marginBottom: 12,
-        width: '100%',
-        maxWidth: 300,
+        backgroundColor: '#F7F2FF',
+        borderRadius: 999,
+        paddingVertical: 12,
+        paddingLeft: 12,
+        paddingRight: 20,
+        marginBottom: 14,
+        shadowColor: '#8247E5',
+        shadowOffset: { width: 2, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+        elevation: 6,
     },
-    wolioIdShield: { marginRight: 8 },
-    wolioIdValueInline: { flex: 1, fontSize: 14, fontWeight: '700', color: COLORS.text },
-    bio: {
-        fontSize: 14,
-        color: COLORS.text,
-        textAlign: 'center',
-        lineHeight: 22,
-        marginBottom: 12,
+    wolioIdShieldWrap: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 14,
     },
-    metaRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 6 },
-    metaItem: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 8, marginBottom: 6 },
+    wolioIdCenter: { flex: 1 },
+    wolioIdLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        letterSpacing: 0.5,
+        color: '#8247E5',
+        marginBottom: 2,
+    },
+    wolioIdValue: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#2A2A2A',
+    },
+    browsingStatus: { fontSize: 13, color: COLORS.textSecondary, marginBottom: 12 },
+    metaRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
+    metaItem: { flexDirection: 'row', alignItems: 'center', marginRight: 16, marginBottom: 6 },
     metaText: { fontSize: 13, color: COLORS.textSecondary, marginLeft: 6 },
-    metaLink: { color: '#3B82F6', fontWeight: '500' },
-    coursesCount: { fontSize: 17, fontWeight: '700', color: COLORS.text, marginBottom: 16 },
-    actionRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, width: '100%' },
-    editProfileBtn: { flex: 1, borderRadius: 14, overflow: 'hidden', marginRight: 12 },
-    editProfileGradient: {
+    metaLink: { color: '#9810FA', fontWeight: '500' },
+    coursesCount: { fontSize: 16, fontWeight: '700', color: COLORS.text, marginBottom: 20 },
+    editProfileBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        height: 48,
-        paddingHorizontal: 20,
-    },
-    editProfileText: { fontSize: 15, fontWeight: '600', color: '#fff', marginLeft: 8 },
-    settingsBtn: { padding: 8 },
-
-    tabsRow: { flexDirection: 'row', paddingHorizontal: 24, marginBottom: 16 },
-    tab: {
-        flex: 1,
         paddingVertical: 12,
         borderRadius: 14,
-        marginHorizontal: 4,
-        alignItems: 'center',
         backgroundColor: '#fff',
-        ...SHADOWS.small,
+        borderWidth: 1.5,
+        borderColor: '#E5E7EB',
+        marginBottom: 24,
     },
+    editProfileText: { fontSize: 15, fontWeight: '600', color: COLORS.text, marginLeft: 8 },
+
+    tabsRow: { flexDirection: 'row', paddingHorizontal: 24, marginBottom: 16, gap: 12 },
+    tab: { flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: 'center', overflow: 'hidden', position: 'relative' },
     tabActive: { overflow: 'hidden' },
+    tabInactive: { backgroundColor: '#F3F4F6' },
     tabActiveGradient: {
         ...StyleSheet.absoluteFillObject,
-        paddingVertical: 12,
         justifyContent: 'center',
         alignItems: 'center',
     },
     tabText: { fontSize: 15, fontWeight: '600', color: COLORS.textSecondary },
     tabTextActive: { fontSize: 15, fontWeight: '700', color: '#fff' },
-    tabTextActivePlain: { color: COLORS.primary },
 
     cardsSection: { paddingHorizontal: 24 },
     activityCard: {
@@ -603,34 +700,112 @@ const styles = StyleSheet.create({
         padding: 16,
         marginBottom: 14,
         ...SHADOWS.small,
+        position: 'relative',
     },
     activityIconWrap: {
-        width: 48,
-        height: 48,
-        borderRadius: 12,
+        width: 52,
+        height: 52,
+        borderRadius: 26,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 14,
     },
     activityBody: { flex: 1 },
     activityTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text, marginBottom: 4 },
-    activityDesc: { fontSize: 14, color: COLORS.textSecondary, marginBottom: 6 },
-    progressBarWrap: {
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#E5E7EB',
-        overflow: 'hidden',
-        marginBottom: 8,
-    },
-    progressBarFill: {
-        height: '100%',
-        borderRadius: 3,
-    },
+    activityDesc: { fontSize: 14, color: COLORS.textSecondary, marginBottom: 8 },
     activityTime: { fontSize: 12, color: COLORS.textSecondary, marginBottom: 10 },
     activityActions: { flexDirection: 'row', alignItems: 'center' },
     activityAction: { flexDirection: 'row', alignItems: 'center', marginRight: 16 },
     activityActionText: { fontSize: 13, color: COLORS.textSecondary, marginLeft: 6 },
+    sparkleBtn: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        borderRadius: 20,
+        overflow: 'hidden',
+    },
+    sparkleGradient: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     emptyText: { fontSize: 15, color: COLORS.textSecondary, textAlign: 'center', paddingVertical: 24 },
+
+    tabContent: { width: '100%' },
+    achievementsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        paddingHorizontal: 24,
+        paddingTop: 4,
+        justifyContent: 'space-between',
+    },
+    achievementCard: {
+        width: (Dimensions.get('window').width - 48 - 12) / 2,
+        marginBottom: 14,
+        borderRadius: 18,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    achievementCardGradient: {
+        borderRadius: 18,
+        padding: 16,
+        position: 'relative',
+    },
+    achievementCheck: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#10B981',
+        borderWidth: 2,
+        borderColor: '#fff',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    achievementBadgeWrap: {
+        alignSelf: 'center',
+        marginBottom: 12,
+    },
+    achievementBadge: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    achievementCardTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: COLORS.text,
+        marginBottom: 4,
+        textAlign: 'center',
+    },
+    achievementCardDesc: {
+        fontSize: 12,
+        color: COLORS.textSecondary,
+        textAlign: 'center',
+        marginBottom: 10,
+    },
+    achievementDateBadge: {
+        alignSelf: 'center',
+        backgroundColor: '#D1FAE5',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+    },
+    achievementDateText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#059669',
+    },
 
     signOutBtn: {
         flexDirection: 'row',
@@ -641,8 +816,8 @@ const styles = StyleSheet.create({
         height: 52,
         borderRadius: 14,
         borderWidth: 1.5,
-        borderColor: COLORS.danger,
-        backgroundColor: '#FFFFFF',
+        borderColor: '#E5E7EB',
+        backgroundColor: '#fff',
     },
     signOutText: { fontSize: 16, fontWeight: '600', color: COLORS.danger, marginLeft: 10 },
 
@@ -652,13 +827,52 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         padding: 24,
     },
+    modalBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+    },
     modalContent: {
         backgroundColor: '#fff',
-        borderRadius: 20,
+        borderRadius: 24,
         padding: 24,
-        ...SHADOWS.medium,
+        maxHeight: '90%',
+        shadowColor: '#dddddd',
+        shadowOffset: { width: 6, height: 4 },
+        shadowOpacity: 0.6,
+        shadowRadius: 16,
+        elevation: 17,
     },
-    modalTitle: { fontSize: 20, fontWeight: '700', color: COLORS.text, marginBottom: 20 },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 24,
+    },
+    modalTitleWrap: { flex: 1, alignSelf: 'flex-start', justifyContent: 'center' },
+    modalCloseBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalScroll: {
+        maxHeight: Math.min(Dimensions.get('window').height * 0.55, 520),
+    },
+    modalScrollContent: { paddingBottom: 16 },
+    modalField: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 18,
+    },
+    modalFieldIcon: { marginTop: 24, marginRight: 12 },
+    modalFieldBody: { flex: 1 },
+    modalFieldLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: COLORS.textSecondary,
+        marginBottom: 6,
+    },
     modalInput: {
         borderWidth: 1,
         borderColor: '#E5E7EB',
@@ -667,14 +881,28 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         fontSize: 16,
         color: COLORS.text,
-        marginBottom: 14,
+        backgroundColor: '#fff',
     },
     modalInputMultiline: { minHeight: 80, textAlignVertical: 'top' },
-    modalActions: { flexDirection: 'row', marginTop: 8, gap: 12 },
-    modalCancelBtn: { flex: 1, paddingVertical: 14, alignItems: 'center' },
-    modalCancelText: { fontSize: 16, fontWeight: '600', color: COLORS.textSecondary },
+    modalActions: {
+        flexDirection: 'row',
+        marginTop: 20,
+        gap: 12,
+    },
+    modalCancelBtn: {
+        flex: 1,
+        paddingVertical: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 14,
+        borderWidth: 1.5,
+        borderColor: '#E5E7EB',
+        backgroundColor: '#fff',
+    },
+    modalCancelText: { fontSize: 16, fontWeight: '600', color: COLORS.text },
     modalSaveBtn: { flex: 1, borderRadius: 14, overflow: 'hidden' },
     modalSaveGradient: {
+        flexDirection: 'row',
         paddingVertical: 14,
         alignItems: 'center',
         justifyContent: 'center',

@@ -187,7 +187,11 @@ const AuthStack = ({ initialRouteName = 'Splash' }) => (
 const MainStack = () => (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Main" component={MainTabs} />
-        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen
+            name="Profile"
+            component={ProfileScreen}
+            options={{ cardStyle: { flex: 1 } }}
+        />
     </Stack.Navigator>
 );
 
