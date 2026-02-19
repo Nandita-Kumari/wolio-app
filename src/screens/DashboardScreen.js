@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Image, ActivityIndicator, Alert, Modal, Pressable, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Zap, LogOut, Clock, Flame, CheckCircle, Play, ArrowRight, Video, FileText, Plus } from 'lucide-react-native';
+import { User, Settings, Bell, LogOut, Clock, Flame, CheckCircle, Play, ArrowRight, Folder, Brain, Plus, X } from 'lucide-react-native';
 import { Trophy } from 'lucide-react-native/icons';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
 import GlassCard from '../components/GlassCard';
@@ -11,7 +11,7 @@ import { getDashboardData } from '../services/dashboardApi';
 const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const CHART_MAX_HEIGHT = 70;
 const PRIORITY_STYLES = {
-    high: { bg: '#FECACA', text: '#EF4444', label: 'HIGH' },
+    high: { bg: '#FDA4AF', text: '#fff', label: 'HIGH' },
     medium: { bg: '#FFEDD5', text: '#EA580C', label: 'MEDIUM' },
     low: { bg: '#D1FAE5', text: '#059669', label: 'LOW' },
 };
@@ -19,27 +19,48 @@ const PRIORITY_STYLES = {
 const DashboardScreen = ({ navigation }) => {
     const { user, token, logout } = useUser();
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [data, setData] = useState(null);
+    const [dropdownVisible, setDropdownVisible] = useState(false);
+    const [addTaskModalVisible, setAddTaskModalVisible] = useState(false);
+    const [newTaskTitle, setNewTaskTitle] = useState('');
+    const [newTaskDueTime, setNewTaskDueTime] = useState('');
+    const [newTaskCourse, setNewTaskCourse] = useState('');
+    const [newTaskPriority, setNewTaskPriority] = useState('medium');
+    const [localTasks, setLocalTasks] = useState([]);
 
     const loadDashboard = useCallback(async () => {
         setLoading(true);
-        setError(null);
         try {
             const res = await getDashboardData(token);
             setData(res);
-        } catch (e) {
-            setError(e.message || 'Failed to load dashboard');
         } finally {
             setLoading(false);
         }
     }, [token]);
 
+    const requireAuth = (actionName = 'this') => {
+        if (!token) {
+            Alert.alert(
+                'Sign in required',
+                `Please sign in to access ${actionName}.`,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Sign In', onPress: () => navigation.getParent()?.navigate('Login') },
+                ]
+            );
+            return false;
+        }
+        return true;
+    };
+
     useEffect(() => {
         loadDashboard();
     }, [loadDashboard]);
 
-    const displayName = data?.userName ? data.userName.split(' ')[0] : (user?.name?.split(' ')[0] || user?.name || 'Student');
+    const displayName = token
+        ? (data?.userName || user?.name || 'Student')
+        : 'Guest Learner';
+    const userEmail = user?.email || (token ? 'user@wolio.id' : 'Sign in to see your email');
     const dateStr = data?.currentDate || new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
     const stats = data?.userStats || {};
     const studyHours = stats.todayTimeSpentHours != null ? `${Number(stats.todayTimeSpentHours).toFixed(1)}h` : '0h';
@@ -53,6 +74,30 @@ const DashboardScreen = ({ navigation }) => {
     const avgPerDay = data?.averageTimePerDay ?? 0;
     const continueLearning = data?.continueLearning || [];
     const todayTasks = data?.todayTasks || [];
+    const allTasks = [...todayTasks, ...localTasks];
+    const displayTotalTask = allTasks.length;
+
+    const openAddTaskModal = () => {
+        if (!requireAuth('add tasks')) return;
+        setNewTaskTitle('');
+        setNewTaskDueTime('');
+        setNewTaskCourse('');
+        setNewTaskPriority('medium');
+        setAddTaskModalVisible(true);
+    };
+
+    const handleAddTask = () => {
+        const title = newTaskTitle.trim();
+        if (!title) {
+            Alert.alert('Required', 'Please enter a task title.');
+            return;
+        }
+        setLocalTasks((prev) => [
+            ...prev,
+            { taskTitle: title, taskDueTime: newTaskDueTime.trim() || '—', taskCourse: newTaskCourse.trim() || '—', priority: newTaskPriority },
+        ]);
+        setAddTaskModalVisible(false);
+    };
 
     if (loading && !data) {
         return (
@@ -62,22 +107,6 @@ const DashboardScreen = ({ navigation }) => {
                     <View style={styles.loadingWrap}>
                         <ActivityIndicator size="large" color={COLORS.primary} />
                         <Text style={styles.loadingText}>Loading dashboard...</Text>
-                    </View>
-                </SafeAreaView>
-            </View>
-        );
-    }
-
-    if (error && !data) {
-        return (
-            <View style={styles.container}>
-                <LinearGradient colors={[COLORS.background, '#F3E8FF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
-                <SafeAreaView style={styles.safeArea}>
-                    <View style={styles.errorWrap}>
-                        <Text style={styles.errorText}>{error}</Text>
-                        <TouchableOpacity style={styles.retryBtn} onPress={loadDashboard}>
-                            <Text style={styles.retryBtnText}>Retry</Text>
-                        </TouchableOpacity>
                     </View>
                 </SafeAreaView>
             </View>
@@ -101,33 +130,175 @@ const DashboardScreen = ({ navigation }) => {
                     <View style={styles.header}>
                         <TouchableOpacity
                             style={styles.userInfo}
-                            onPress={() => navigation.getParent()?.navigate('Profile')}
+                            onPress={() => setDropdownVisible(true)}
                             activeOpacity={0.8}
                         >
                             <View style={styles.avatarContainer}>
-                                {data?.userProfilePhoto ? (
-                                    <Image source={{ uri: data.userProfilePhoto }} style={styles.avatar} />
-                                ) : (
-                                    <View style={styles.avatar} />
-                                )}
-                                <View style={styles.onlineIndicator} />
+                                <View style={styles.avatarGlow}>
+                                    {data?.userProfilePhoto ? (
+                                        <Image source={{ uri: data.userProfilePhoto }} style={styles.avatar} />
+                                    ) : (
+                                        <View style={styles.avatar} />
+                                    )}
+                                    <View style={styles.onlineIndicator} />
+                                </View>
                             </View>
                             <View>
                                 <Text style={styles.greeting}>{displayName}</Text>
                                 <Text style={styles.date}>{dateStr}</Text>
                             </View>
                         </TouchableOpacity>
-                        <View style={styles.headerButtons}>
-                            <TouchableOpacity style={styles.logoutBtn} onPress={() => logout()} activeOpacity={0.7}>
-                                <LogOut size={20} color={COLORS.textSecondary} />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.notificationBtn}>
-                                <LinearGradient colors={GRADIENTS.primary} style={styles.notificationGradient}>
-                                    <Zap size={20} color="#fff" strokeWidth={2.5} />
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity style={styles.notificationBtn} onPress={() => { setDropdownVisible(false); requireAuth('notifications'); }}>
+                            <View style={styles.notificationBtnInner}>
+                                <Folder size={20} color="#fff" strokeWidth={2.5} />
+                            </View>
+                        </TouchableOpacity>
                     </View>
+
+                    {/* Profile Dropdown */}
+                    <Modal
+                        visible={dropdownVisible}
+                        transparent
+                        animationType="fade"
+                        onRequestClose={() => setDropdownVisible(false)}
+                    >
+                        <Pressable style={styles.dropdownBackdrop} onPress={() => setDropdownVisible(false)}>
+                            <Pressable style={styles.dropdownCard} onPress={(e) => e.stopPropagation()}>
+                                <View style={styles.dropdownUser}>
+                                    <View style={styles.dropdownAvatarWrap}>
+                                        {data?.userProfilePhoto ? (
+                                            <Image source={{ uri: data.userProfilePhoto }} style={styles.dropdownAvatar} />
+                                        ) : (
+                                            <View style={styles.dropdownAvatar} />
+                                        )}
+                                        <View style={styles.dropdownOnlineDot} />
+                                    </View>
+                                    <View style={styles.dropdownUserText}>
+                                        <Text style={styles.dropdownName}>{displayName}</Text>
+                                        <Text style={styles.dropdownEmail}>{userEmail}</Text>
+                                    </View>
+                                </View>
+                                <Pressable
+                                    style={({ pressed, hovered }) => [styles.dropdownItem, (pressed || hovered) && styles.dropdownItemHover]}
+                                    onPress={() => { setDropdownVisible(false); if (requireAuth('profile')) navigation.getParent()?.navigate('Profile'); }}
+                                >
+                                    <View style={styles.dropdownItemIconWrap}>
+                                        <User size={16} color={COLORS.primary} strokeWidth={2} />
+                                    </View>
+                                    <Text style={styles.dropdownItemText}>View Profile</Text>
+                                </Pressable>
+                                <Pressable
+                                    style={({ pressed, hovered }) => [styles.dropdownItem, (pressed || hovered) && styles.dropdownItemHover]}
+                                    onPress={() => { setDropdownVisible(false); requireAuth('settings'); }}
+                                >
+                                    <View style={styles.dropdownItemIconWrap}>
+                                        <Settings size={16} color={COLORS.primary} strokeWidth={2} />
+                                    </View>
+                                    <Text style={styles.dropdownItemText}>Settings</Text>
+                                </Pressable>
+                                <Pressable
+                                    style={({ pressed, hovered }) => [styles.dropdownItem, (pressed || hovered) && styles.dropdownItemHover]}
+                                    onPress={() => { setDropdownVisible(false); requireAuth('notifications'); }}
+                                >
+                                    <View style={styles.dropdownItemIconWrap}>
+                                        <Bell size={16} color={COLORS.primary} strokeWidth={2} />
+                                    </View>
+                                    <Text style={styles.dropdownItemText}>Notifications</Text>
+                                </Pressable>
+                                {token ? (
+                                    <Pressable
+                                        style={({ pressed, hovered }) => [styles.dropdownItem, (pressed || hovered) && styles.dropdownItemHoverLogout]}
+                                        onPress={() => { setDropdownVisible(false); logout(); }}
+                                    >
+                                        <View style={styles.dropdownItemIconWrapLogout}>
+                                            <LogOut size={16} color={COLORS.danger} strokeWidth={2} />
+                                        </View>
+                                        <Text style={styles.dropdownItemTextDanger}>Logout</Text>
+                                    </Pressable>
+                                ) : (
+                                    <Pressable
+                                        style={({ pressed, hovered }) => [styles.dropdownItem, (pressed || hovered) && styles.dropdownItemHover]}
+                                        onPress={() => { setDropdownVisible(false); navigation.getParent()?.navigate('Login'); }}
+                                    >
+                                        <View style={styles.dropdownItemIconWrap}>
+                                            <LogOut size={16} color={COLORS.primary} strokeWidth={2} />
+                                        </View>
+                                        <Text style={[styles.dropdownItemText, { color: COLORS.primary }]}>Sign In</Text>
+                                    </Pressable>
+                                )}
+                            </Pressable>
+                        </Pressable>
+                    </Modal>
+
+                    {/* Add Task Modal */}
+                    <Modal
+                        visible={addTaskModalVisible}
+                        transparent
+                        animationType="fade"
+                        onRequestClose={() => setAddTaskModalVisible(false)}
+                    >
+                        <Pressable style={styles.addTaskBackdrop} onPress={() => setAddTaskModalVisible(false)}>
+                            <Pressable style={styles.addTaskModal} onPress={(e) => e.stopPropagation()}>
+                                <View style={styles.addTaskHeader}>
+                                    <Text style={styles.addTaskTitle}>Add New Task</Text>
+                                    <TouchableOpacity style={styles.addTaskCloseBtn} onPress={() => setAddTaskModalVisible(false)}>
+                                        <X size={20} color={COLORS.text} strokeWidth={2} />
+                                    </TouchableOpacity>
+                                </View>
+                                <Text style={[styles.addTaskLabel, { marginTop: 0 }]}>Task Title *</Text>
+                                <TextInput
+                                    style={styles.addTaskInput}
+                                    placeholder="E.g., Complete Physics Homework"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={newTaskTitle}
+                                    onChangeText={setNewTaskTitle}
+                                />
+                                <Text style={styles.addTaskLabel}>Due Time</Text>
+                                <TextInput
+                                    style={styles.addTaskInput}
+                                    placeholder="E.g., in 2 hours, tomorrow"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={newTaskDueTime}
+                                    onChangeText={setNewTaskDueTime}
+                                />
+                                <Text style={styles.addTaskLabel}>Course/Subject</Text>
+                                <TextInput
+                                    style={styles.addTaskInput}
+                                    placeholder="E.g., Physics, Mathematics"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={newTaskCourse}
+                                    onChangeText={setNewTaskCourse}
+                                />
+                                <Text style={styles.addTaskLabel}>Priority</Text>
+                                <View style={styles.addTaskPriorityRow}>
+                                    {(['high', 'medium', 'low']).map((p) => (
+                                        <TouchableOpacity
+                                            key={p}
+                                            style={[styles.addTaskPriorityBtn, newTaskPriority === p && styles.addTaskPriorityBtnActive]}
+                                            onPress={() => setNewTaskPriority(p)}
+                                        >
+                                            {newTaskPriority === p ? (
+                                                <LinearGradient colors={['#F59E0B', '#FBBF24']} style={StyleSheet.absoluteFill} />
+                                            ) : null}
+                                            <Text style={[styles.addTaskPriorityText, newTaskPriority === p && styles.addTaskPriorityTextActive]}>
+                                                {p.charAt(0).toUpperCase() + p.slice(1)}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                                <View style={styles.addTaskActions}>
+                                    <TouchableOpacity style={styles.addTaskCancelBtn} onPress={() => setAddTaskModalVisible(false)}>
+                                        <Text style={styles.addTaskCancelText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.addTaskSubmitWrap} onPress={handleAddTask} activeOpacity={0.9}>
+                                        <LinearGradient colors={GRADIENTS.primary} style={styles.addTaskSubmitBtn}>
+                                            <Text style={styles.addTaskSubmitText}>Add Task</Text>
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+                                </View>
+                            </Pressable>
+                        </Pressable>
+                    </Modal>
 
                     {/* Stats Row - three equal columns in a row: icon + value on top, label below */}
                     <GlassCard style={styles.statsContainer}>
@@ -180,10 +351,14 @@ const DashboardScreen = ({ navigation }) => {
                                 const height = (hours / maxWeekHours) * CHART_MAX_HEIGHT || 0;
                                 return (
                                     <View key={index} style={styles.barContainer}>
-                                        <LinearGradient
-                                            colors={height > 0 && index === (new Date().getDay() + 6) % 7 ? GRADIENTS.primary : ['#E9D5FF', '#E9D5FF']}
-                                            style={[styles.bar, { height: Math.max(height, 4), opacity: height === 0 ? 0.2 : 1 }]}
-                                        />
+                                        {height > 0 ? (
+                                            <LinearGradient
+                                                colors={GRADIENTS.primary}
+                                                style={[styles.bar, { height: Math.max(height, 4) }]}
+                                            />
+                                        ) : (
+                                            <View style={[styles.bar, styles.barEmpty, { height: 4 }]} />
+                                        )}
                                         <Text style={styles.dayLabel}>{day}</Text>
                                     </View>
                                 );
@@ -207,7 +382,7 @@ const DashboardScreen = ({ navigation }) => {
                             </View>
                         </View>
                         <View style={styles.progressBarBg}>
-                            <LinearGradient colors={['#F59E0B', '#F59E0B']} style={[styles.progressBarFill, { width: '75%' }]} />
+                            <LinearGradient colors={['#F97316', '#FBBF24']} style={[styles.progressBarFill, { width: '75%' }]} />
                         </View>
                     </GlassCard>
 
@@ -217,7 +392,7 @@ const DashboardScreen = ({ navigation }) => {
                             <View style={styles.indicator} />
                             <Text style={styles.sectionTitle}>Continue Learning</Text>
                         </View>
-                        <TouchableOpacity>
+                        <TouchableOpacity onPress={() => requireAuth('continue learning')}>
                             <Text style={styles.seeAll}>See All →</Text>
                         </TouchableOpacity>
                     </View>
@@ -249,10 +424,16 @@ const DashboardScreen = ({ navigation }) => {
                                         </View>
                                         <View style={styles.courseMeta}>
                                             <Text style={styles.metaText}>{course.chapterNumber}/{course.totalChapters} lessons</Text>
-                                            <Text style={styles.metaText}>{course.timeLeftHours ? `${course.timeLeftHours}h left` : '—'}</Text>
+                                            <Text style={styles.metaText}>
+                                                {course.timeLeftHours != null
+                                                    ? (course.timeLeftHours < 1
+                                                        ? `${Math.round((course.timeLeftHours || 0) * 60)} min left`
+                                                        : `${Number(course.timeLeftHours).toFixed(1)}h left`)
+                                                    : '—'}
+                                            </Text>
                                         </View>
                                     </View>
-                                    <TouchableOpacity style={styles.coursePlayWrap} activeOpacity={0.8}>
+                                    <TouchableOpacity style={styles.coursePlayWrap} onPress={() => requireAuth('continue reading')} activeOpacity={0.8}>
                                         <LinearGradient colors={GRADIENTS.primary} style={styles.coursePlayBtn}>
                                             <Play size={15} color="#fff" fill="#fff" />
                                         </LinearGradient>
@@ -267,28 +448,28 @@ const DashboardScreen = ({ navigation }) => {
                         <View style={styles.sectionTitleRow}>
                             <View style={styles.indicator} />
                             <Text style={styles.sectionTitle}>Today's Tasks</Text>
-                            <View style={styles.countBadge}><Text style={styles.countText}>{taskDone}/{totalTask}</Text></View>
+                            <View style={styles.countBadge}><Text style={styles.countText}>{taskDone}/{displayTotalTask}</Text></View>
                         </View>
-                        <TouchableOpacity>
+                        <TouchableOpacity onPress={openAddTaskModal}>
                             <View style={styles.addButton}>
-                                <Plus size={20} color="#fff" />
+                                <Plus size={24} color="#fff" strokeWidth={2.5} />
                             </View>
                         </TouchableOpacity>
                     </View>
 
                     <GlassCard style={styles.taskCard}>
-                        {todayTasks.length === 0 ? (
+                        {allTasks.length === 0 ? (
                             <View style={styles.taskRow}>
                                 <Text style={styles.taskEmpty}>No tasks for today</Text>
                             </View>
                         ) : (
-                            todayTasks.map((task, idx) => {
+                            allTasks.map((task, idx) => {
                                 const pri = PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.medium;
                                 return (
                                     <View key={task.taskTitle + idx} style={[styles.taskRow, idx > 0 && styles.taskRowBorder]}>
-                                        <TouchableOpacity style={styles.checkbox} />
+                                        <TouchableOpacity style={styles.checkbox} onPress={() => requireAuth('complete tasks')} />
                                         <View style={[styles.taskIcon, { backgroundColor: '#F3E8FF' }]}>
-                                            <FileText size={18} color={COLORS.primary} />
+                                            <Brain size={18} color={COLORS.primary} />
                                         </View>
                                         <View style={styles.taskContent}>
                                             <Text style={styles.taskTitle}>{task.taskTitle}</Text>
@@ -345,11 +526,20 @@ const styles = StyleSheet.create({
     avatarContainer: {
         marginRight: 12,
     },
+    avatarGlow: {
+        position: 'relative',
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 8,
+        elevation: 6,
+    },
     avatar: {
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: '#ddd',
+        backgroundColor: '#E9D5FF',
+        overflow: 'hidden',
     },
     loadingWrap: {
         flex: 1,
@@ -371,6 +561,7 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.primary,
     },
     retryBtnText: { fontSize: 16, fontWeight: '600', color: '#fff' },
+    signInText: { fontSize: 14, fontWeight: '600', color: COLORS.primary },
     taskEmpty: { fontSize: 14, color: COLORS.textSecondary, paddingVertical: 12 },
     onlineIndicator: {
         width: 12,
@@ -392,19 +583,234 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: COLORS.textSecondary,
     },
-    headerButtons: {
+    dropdownBackdrop: {
+        flex: 1,
+        backgroundColor: 'transparent',
+        paddingTop: 56,
+        paddingHorizontal: 16,
+        alignItems: 'flex-start',
+    },
+    dropdownCard: {
+        backgroundColor: '#fff',
+        borderRadius: 14,
+        padding: 12,
+        minWidth: 200,
+        ...SHADOWS.medium,
+        shadowColor: '#000',
+    },
+    dropdownUser: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+        paddingBottom: 10,
+        paddingHorizontal: 12,
+        marginHorizontal: -12,
+        marginTop: -12,
+        paddingTop: 12,
+        backgroundColor: '#FCE7F3',
+        borderTopLeftRadius: 14,
+        borderTopRightRadius: 14,
     },
-    logoutBtn: {
-        padding: 8,
-        marginRight: 4,
+    dropdownUserText: {
+        flex: 1,
+        marginLeft: 12,
     },
-    notificationBtn: {},
-    notificationGradient: {
+    dropdownAvatarWrap: {
+        position: 'relative',
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.35,
+        shadowRadius: 6,
+        elevation: 3,
+    },
+    dropdownAvatar: {
         width: 40,
         height: 40,
         borderRadius: 20,
+        backgroundColor: '#E9D5FF',
+        overflow: 'hidden',
+    },
+    dropdownOnlineDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: COLORS.success,
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        borderWidth: 2,
+        borderColor: '#fff',
+    },
+    dropdownName: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: COLORS.text,
+        marginBottom: 2,
+        textAlign: 'left',
+    },
+    dropdownEmail: {
+        fontSize: 11,
+        color: COLORS.textSecondary,
+        textAlign: 'left',
+    },
+    dropdownItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 8,
+        marginHorizontal: -8,
+        marginVertical: 2,
+        borderRadius: 10,
+        gap: 10,
+    },
+    dropdownItemHover: {
+        backgroundColor: '#F3E8FF',
+    },
+    dropdownItemHoverLogout: {
+        backgroundColor: '#FECACA',
+    },
+    dropdownItemIconWrap: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#F3E8FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    dropdownItemIconWrapLogout: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#FECACA',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    dropdownItemText: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: COLORS.text,
+    },
+    dropdownItemTextDanger: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: COLORS.danger,
+    },
+    addTaskBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    addTaskModal: {
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 24,
+        width: '100%',
+        maxWidth: 400,
+        ...SHADOWS.large,
+    },
+    addTaskHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    addTaskTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: COLORS.text,
+    },
+    addTaskCloseBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    addTaskLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.text,
+        marginBottom: 8,
+        marginTop: 16,
+    },
+    addTaskInput: {
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        fontSize: 15,
+        color: COLORS.text,
+    },
+    addTaskPriorityRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginTop: 8,
+    },
+    addTaskPriorityBtn: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 12,
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    addTaskPriorityBtnActive: {
+        borderColor: 'transparent',
+    },
+    addTaskPriorityText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.textSecondary,
+        zIndex: 1,
+    },
+    addTaskPriorityTextActive: {
+        color: '#fff',
+    },
+    addTaskActions: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 24,
+    },
+    addTaskCancelBtn: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 12,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+    },
+    addTaskCancelText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: COLORS.textSecondary,
+    },
+    addTaskSubmitWrap: {
+        flex: 1,
+        borderRadius: 12,
+        overflow: 'hidden',
+    },
+    addTaskSubmitBtn: {
+        paddingVertical: 14,
+        alignItems: 'center',
+    },
+    addTaskSubmitText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#fff',
+    },
+    notificationBtn: {},
+    notificationBtnInner: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        backgroundColor: '#F97316',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -496,6 +902,10 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         marginBottom: 8,
     },
+    barEmpty: {
+        backgroundColor: '#E5E7EB',
+        opacity: 0.6,
+    },
     dayLabel: {
         fontSize: 12,
         color: COLORS.textSecondary,
@@ -512,10 +922,10 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     trophyContainer: {
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
         borderRadius: 12,
-        backgroundColor: COLORS.warning,
+        backgroundColor: '#F97316',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
@@ -539,7 +949,7 @@ const styles = StyleSheet.create({
     percentText: {
         fontSize: 18,
         fontWeight: '700',
-        color: COLORS.warning,
+        color: '#F97316',
         marginRight: 4,
     },
     progressBarBg: {
@@ -574,10 +984,10 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     addButton: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: COLORS.secondary,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: COLORS.primary,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -606,8 +1016,8 @@ const styles = StyleSheet.create({
     },
     courseBadge: {
         position: 'absolute',
-        top: -6,
-        right: -6,
+        top: -4,
+        left: -4,
         backgroundColor: COLORS.warning,
         minWidth: 22,
         height: 22,

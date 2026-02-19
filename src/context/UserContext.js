@@ -4,6 +4,7 @@ import * as authApi from '../services/authApi';
 
 const TOKEN_KEY = '@wolio_token';
 const USER_KEY = '@wolio_user';
+const ONBOARDING_KEY = '@wolio_onboarding';
 
 const UserContext = createContext(null);
 
@@ -11,6 +12,7 @@ export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setTokenState] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [hasCompletedOnboarding, setHasCompletedOnboardingState] = useState(false);
 
   const setToken = (newToken) => {
     setTokenState(newToken);
@@ -26,17 +28,27 @@ export const UserProvider = ({ children }) => {
 
   const loadStoredAuth = async () => {
     try {
-      const [storedToken, storedUser] = await Promise.all([
+      const [storedToken, storedUser, storedOnboarding] = await Promise.all([
         AsyncStorage.getItem(TOKEN_KEY),
         AsyncStorage.getItem(USER_KEY),
+        AsyncStorage.getItem(ONBOARDING_KEY),
       ]);
       if (storedToken) setTokenState(storedToken);
       if (storedUser) setUser(JSON.parse(storedUser));
+      if (storedOnboarding) {
+        const parsed = JSON.parse(storedOnboarding);
+        if (parsed?.completed) setHasCompletedOnboardingState(true);
+      }
     } catch (e) {
       // ignore
     } finally {
       setLoading(false);
     }
+  };
+
+  const completeOnboarding = async (role) => {
+    await AsyncStorage.setItem(ONBOARDING_KEY, JSON.stringify({ completed: true, role }));
+    setHasCompletedOnboardingState(true);
   };
 
   useEffect(() => {
@@ -85,6 +97,8 @@ export const UserProvider = ({ children }) => {
         token,
         loading,
         isLoggedIn: !!token,
+        hasCompletedOnboarding,
+        completeOnboarding,
         setToken,
         persistUser,
         login,

@@ -1,45 +1,65 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Dimensions, TouchableOpacity, Animated, Easing } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    SafeAreaView,
+    Dimensions,
+    TouchableOpacity,
+    Platform,
+    ScrollView,
+    Animated,
+    Easing,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { GraduationCap, Users, Sparkles, Lock } from 'lucide-react-native';
-import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
+import { BookOpen, Users, Sparkles, Lock, ChevronRight } from 'lucide-react-native';
+import { useUser } from '../context/UserContext';
 
 const { width } = Dimensions.get('window');
 
-const RoleCard = ({ title, description, icon: Icon, selected, onPress, color }) => {
+const RoleCard = ({ title, description, icon: Icon, gradientColors, onPress }) => {
     return (
-        <TouchableOpacity
-            onPress={onPress}
-            activeOpacity={0.9}
-            style={[
-                styles.roleCard,
-                selected && styles.roleCardSelected,
-                selected && { borderColor: color }
-            ]}
-        >
-            <View style={[styles.iconContainer, { backgroundColor: color }]}>
-                <Icon color="#fff" size={24} />
-            </View>
-            <View style={styles.textContainer}>
-                <Text style={styles.roleTitle}>{title}</Text>
-                <Text style={styles.roleDescription}>{description}</Text>
+        <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={styles.roleCardWrap}>
+            <View style={styles.roleCard}>
+                <View style={styles.roleCardInner}>
+                    <LinearGradient
+                    colors={gradientColors}
+                    style={styles.roleIconGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                >
+                    <Icon color="#fff" size={24} strokeWidth={2} />
+                </LinearGradient>
+                <View style={styles.roleTextWrap}>
+                    <Text style={styles.roleTitle}>{title}</Text>
+                    <Text style={styles.roleDescription}>{description}</Text>
+                </View>
+                    <ChevronRight size={22} color="#A855F7" strokeWidth={2.5} />
+                </View>
             </View>
         </TouchableOpacity>
     );
 };
 
 const OnboardingScreen = ({ navigation }) => {
-    const [role, setRole] = useState(null);
-    const rotateAnim = new Animated.Value(0);
+    const { completeOnboarding } = useUser();
+    const rotateAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         Animated.loop(
-            Animated.timing(rotateAnim, {
-                toValue: 1,
-                duration: 4000,
-                easing: Easing.linear,
-                useNativeDriver: true,
-            })
+            Animated.sequence([
+                Animated.timing(rotateAnim, {
+                    toValue: 1,
+                    duration: 4000,
+                    easing: Easing.linear,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(rotateAnim, {
+                    toValue: 0,
+                    duration: 0,
+                    useNativeDriver: true,
+                }),
+            ])
         ).start();
     }, []);
 
@@ -48,94 +68,67 @@ const OnboardingScreen = ({ navigation }) => {
         outputRange: ['0deg', '360deg'],
     });
 
-    const handleContinue = () => {
-        if (role) {
-            navigation.replace('Login');
-        }
+    const handleRoleSelect = async (role) => {
+        await completeOnboarding(role);
+        navigation.replace('Main');
     };
 
     return (
         <View style={styles.container}>
             <LinearGradient
-                colors={['#F3E8FF', '#FCE7F3', '#FFFFFF']}
+                colors={['#F8F7FA', '#F5F3FF', '#FAF5FF', '#FFFFFF']}
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
             />
 
             <SafeAreaView style={styles.safeArea}>
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* Header - directly on gradient background */}
+                    <View style={styles.header}>
+                            <Animated.View style={[styles.logoWrap, { transform: [{ rotate: spin }] }]}>
+                                <LinearGradient
+                                    colors={['#C084FC', '#A855F7', '#EC4899']}
+                                    style={styles.logoGradient}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                >
+                                    <Sparkles color="#fff" size={36} fill="#fff" strokeWidth={1.5} />
+                                </LinearGradient>
+                            </Animated.View>
+                            <Text style={styles.appName}>WOLIO</Text>
+                            <Text style={styles.tagline}>New era. New learning.</Text>
+                            <Text style={styles.subTagline}>Gateway to what's next.</Text>
+                            <Text style={styles.microTagline}>Strong AI • Real-time • Future-proof</Text>
+                        </View>
 
-                {/* Header Section */}
-                <View style={styles.header}>
-                    <Animated.View style={[styles.logoContainer, { transform: [{ rotate: spin }] }]}>
-                        <LinearGradient
-                            colors={['#C084FC', '#A855F7', '#7E22CE']}
-                            style={styles.logoGradient}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                        >
-                            <Sparkles color="#fff" size={40} style={{ transform: [{ rotate: '-15deg' }] }} />
-                        </LinearGradient>
-                    </Animated.View>
-
-                    <Text style={styles.appName}>WOLIO</Text>
-                    <Text style={styles.tagline}>New era. New learning.</Text>
-                    <Text style={styles.subTagline}>Gateway to what's next.</Text>
-                    <Text style={styles.microTagline}>Strong AI • Real-time • Future-proof</Text>
-                </View>
-
-                {/* Content Card */}
-                <View style={styles.cardContainer}>
-                    <View style={styles.card}>
+                    {/* Role cards - only these have card styling with gradient glow */}
+                    <View style={styles.roleSection}>
                         <RoleCard
-                            title="I am a Student"
-                            description="Access your library, read books, and chat with AI"
-                            icon={GraduationCap}
-                            selected={role === 'student'}
-                            onPress={() => setRole('student')}
-                            color="#A855F7" // Purple
-                        />
-
-                        <RoleCard
-                            title="I am a Parent"
-                            description="Monitor your child's reading and set controls"
-                            icon={Users}
-                            selected={role === 'parent'}
-                            onPress={() => setRole('parent')}
-                            color="#6366F1" // Indigo/Blue
-                        />
-
-                        <View style={styles.spacer} />
-
-                        <TouchableOpacity
-                            onPress={handleContinue}
-                            disabled={!role}
-                            activeOpacity={0.8}
-                            style={[
-                                styles.button,
-                                !role && styles.buttonDisabled
-                            ]}
-                        >
-                            <LinearGradient
-                                colors={role ? ['#D8B4FE', '#C084FC', '#E879F9'] : ['#E9D5FF', '#E9D5FF']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.buttonGradient}
-                            >
-                                <Text style={styles.buttonText}>
-                                    {role ? `Continue as ${role === 'student' ? 'Student' : 'Parent'}` : 'Select a role to continue'}
-                                </Text>
-                            </LinearGradient>
-                        </TouchableOpacity>
+                                title="I am a Learner"
+                                description="Access your library, read books, and chat with AI"
+                                icon={BookOpen}
+                                gradientColors={['#A855F7', '#C084FC', '#EC4899']}
+                                onPress={() => handleRoleSelect('student')}
+                            />
+                            <RoleCard
+                                title="I am a Parent"
+                                description="Monitor your children's progress and activity"
+                                icon={Users}
+                                gradientColors={['#EC4899', '#F97316', '#FB923C']}
+                                onPress={() => handleRoleSelect('parent')}
+                            />
                     </View>
-                </View>
 
-                {/* Footer */}
-                <View style={styles.footer}>
-                    <Lock size={12} color="#6B7280" style={{ marginRight: 6 }} />
-                    <Text style={styles.footerText}>Safe, secure, and designed for learning</Text>
-                </View>
-
+                    {/* Footer - security */}
+                    <View style={styles.footer}>
+                        <Lock size={14} color="#9CA3AF" style={{ marginRight: 6 }} />
+                        <Text style={styles.footerText}>Safe, secure, and designed for learning</Text>
+                    </View>
+                </ScrollView>
             </SafeAreaView>
         </View>
     );
@@ -144,150 +137,113 @@ const OnboardingScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: '#F8F7FA',
     },
     safeArea: {
         flex: 1,
     },
+    scrollContent: {
+        flexGrow: 1,
+        paddingHorizontal: 24,
+        paddingTop: 32,
+        paddingBottom: 40,
+        justifyContent: 'center',
+    },
     header: {
         alignItems: 'center',
-        marginTop: 60,
-        marginBottom: 40,
+        marginBottom: 36,
     },
-    logoContainer: {
+    logoWrap: {
         marginBottom: 20,
-        shadowColor: "#A855F7",
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.3,
-        shadowRadius: 15,
-        elevation: 10,
     },
     logoGradient: {
-        width: 80,
-        height: 80,
-        borderRadius: 28, // Squircle-ish
+        width: 72,
+        height: 72,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        transform: [{ rotate: '45deg' }],
     },
     appName: {
-        fontSize: 32,
+        fontSize: 28,
         fontWeight: '800',
-        color: '#A855F7',
-        marginBottom: 12,
+        color: '#7C3AED',
+        marginBottom: 8,
         letterSpacing: 0.5,
     },
     tagline: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '700',
-        color: '#1F2937', // Gray-800
+        color: '#374151',
         marginBottom: 4,
     },
     subTagline: {
-        fontSize: 16,
-        color: '#4B5563', // Gray-600
-        marginBottom: 8,
+        fontSize: 14,
+        color: '#6B7280',
+        marginBottom: 6,
     },
     microTagline: {
         fontSize: 12,
-        color: '#6B7280', // Gray-500
-        letterSpacing: 0.5,
+        color: '#9CA3AF',
+        letterSpacing: 0.3,
     },
-    cardContainer: {
-        paddingHorizontal: 24,
-        flex: 1,
-        justifyContent: 'center', // Center vertically if space allows, or use scrollview for small screens
+    roleSection: {
+        marginBottom: 32,
     },
-    card: {
-        backgroundColor: '#fff',
-        borderRadius: 32,
-        padding: 24,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        elevation: 5,
-        borderWidth: 1,
-        borderColor: '#F3F4F6',
+    roleCardWrap: {
+        marginBottom: 14,
     },
     roleCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#A855F7',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 12,
+            },
+            android: { elevation: 4 },
+        }),
+    },
+    roleCardInner: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
-        backgroundColor: '#fff',
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: '#F3F4F6',
-        marginBottom: 16,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.03,
-        shadowRadius: 4,
-        elevation: 2,
     },
-    roleCardSelected: {
-        backgroundColor: '#FAF5FF', // Very light purple
-        borderWidth: 2,
-    },
-    iconContainer: {
+    roleIconGradient: {
         width: 48,
         height: 48,
-        borderRadius: 16,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
     },
-    textContainer: {
+    roleTextWrap: {
         flex: 1,
     },
     roleTitle: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#111',
+        color: '#1F2937',
         marginBottom: 4,
     },
     roleDescription: {
-        fontSize: 12,
+        fontSize: 13,
         color: '#6B7280',
-        lineHeight: 16,
-    },
-    spacer: {
-        height: 24,
-    },
-    button: {
-        height: 56,
-        borderRadius: 16,
-        overflow: 'hidden',
-        shadowColor: "#A855F7",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    buttonDisabled: {
-        shadowOpacity: 0,
-        elevation: 0,
-    },
-    buttonGradient: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    buttonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '700',
+        lineHeight: 18,
     },
     footer: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 40,
-        marginTop: 20,
     },
     footerText: {
         fontSize: 12,
-        color: '#6B7280',
-    }
+        color: '#9CA3AF',
+    },
 });
 
 export default OnboardingScreen;

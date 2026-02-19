@@ -1,13 +1,26 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, Dimensions, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, Dimensions, TouchableOpacity, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plus, Search, BookOpen, Bookmark, Award } from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
 import GlassCard from '../components/GlassCard';
+import { useUser } from '../context/UserContext';
 
 const { width } = Dimensions.get('window');
 
 const LibraryScreen = () => {
+    const { token } = useUser();
+    const navigation = useNavigation();
+
+    const requireAuth = (actionName) => {
+        if (token) return true;
+        Alert.alert('Sign in required', `Please sign in to ${actionName}.`, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Sign In', onPress: () => navigation.getParent()?.navigate('Login') },
+        ]);
+        return false;
+    };
     const books = [
         { id: 1, title: 'Industrial Revolution', progress: 0.25, total: 200, current: 50, color: '#64748B' },
         { id: 2, title: 'Quantum Mechanics', progress: 0.8, total: 300, current: 240, color: '#A855F7' }, // Featured/Active
@@ -42,10 +55,10 @@ const LibraryScreen = () => {
                             </View>
                         </View>
                         <View style={styles.headerActions}>
-                            <TouchableOpacity style={styles.iconBtn}>
+                            <TouchableOpacity style={styles.iconBtn} onPress={() => requireAuth('add books')}>
                                 <Plus size={20} color={COLORS.primary} />
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.iconBtn}>
+                            <TouchableOpacity style={styles.iconBtn} onPress={() => requireAuth('search your library')}>
                                 <Search size={20} color={COLORS.primary} />
                             </TouchableOpacity>
                         </View>
@@ -94,14 +107,14 @@ const LibraryScreen = () => {
                             <View style={styles.indicator} />
                             <Text style={styles.sectionTitle}>My Bookshelf</Text>
                         </View>
-                        <TouchableOpacity>
+                        <TouchableOpacity onPress={() => requireAuth('view all books')}>
                             <Text style={styles.seeAll}>View All →</Text>
                         </TouchableOpacity>
                     </View>
 
                     <View style={styles.booksGrid}>
                         {books.map((book) => (
-                            <View key={book.id} style={styles.bookItem}>
+                            <TouchableOpacity key={book.id} style={styles.bookItem} onPress={() => requireAuth('open books')} activeOpacity={0.9}>
                                 <View style={[styles.bookCover, { backgroundColor: book.color }]}>
                                     <Text style={styles.bookTitleOnCover}>{book.title}</Text>
                                     {/* Overlay gradient */}
@@ -119,7 +132,7 @@ const LibraryScreen = () => {
                                         </View>
                                     </View>
                                 </View>
-                            </View>
+                            </TouchableOpacity>
                         ))}
                     </View>
 

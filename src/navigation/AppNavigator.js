@@ -166,10 +166,10 @@ const MainTabs = () => {
     );
 };
 
-const AuthStack = () => (
+const AuthStack = ({ initialRouteName = 'Splash' }) => (
     <Stack.Navigator
         screenOptions={{ headerShown: false, animationEnabled: true }}
-        initialRouteName="Login"
+        initialRouteName={initialRouteName}
     >
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
@@ -192,7 +192,7 @@ const MainStack = () => (
 );
 
 const AppNavigator = () => {
-    const { isLoggedIn, loading } = useUser();
+    const { isLoggedIn, loading, hasCompletedOnboarding } = useUser();
 
     if (loading) {
         return (
@@ -207,7 +207,7 @@ const AppNavigator = () => {
             key={isLoggedIn ? 'main' : 'auth'}
             style={styles.navContainer}
         >
-            {isLoggedIn ? <MainStack /> : <AuthStack />}
+            {isLoggedIn ? <MainStack /> : <AuthStack initialRouteName={hasCompletedOnboarding ? 'Main' : 'Splash'} />}
         </NavigationContainer>
     );
 };

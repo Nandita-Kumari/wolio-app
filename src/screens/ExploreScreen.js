@@ -9,6 +9,8 @@ import {
     TouchableOpacity,
     Dimensions,
     ActivityIndicator,
+    RefreshControl,
+    Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -31,6 +33,7 @@ import {
 } from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
 import GradientButton from '../components/GradientButton';
+import { useNavigation } from '@react-navigation/native';
 import { useUser } from '../context/UserContext';
 import { getExploreData } from '../services/exploreApi';
 
@@ -56,67 +59,88 @@ const formatStudents = (num) => {
     return String(num);
 };
 
+const EMPTY_STATS = { totalRegisteredCourses: 0, totalAppUsers: 0, todayNewUsers: 0 };
+const levelColors = { Advanced: '#EF4444', Intermediate: '#F59E0B', Beginner: '#22C55E' };
+
+function normalizeExploreData(data) {
+    if (!data) return { stats: EMPTY_STATS, trendingList: [], categories: [], featuredCourses: [] };
+    const trendingList = (data.trendingNow || []).map((t, i) => ({
+        id: i + 1,
+        title: t.bookName ?? t.title ?? '',
+        category: t.category ?? '',
+        change: `+${t.percentage ?? 0}%`,
+    }));
+    const categories = (data.browseCategories || []).map((c, i) => ({
+        id: i + 1,
+        title: c.category ?? '',
+        count: c.totalBooks ?? 0,
+        newBooks: c.newBooks ?? 0,
+        icon: CATEGORY_ICONS[(c.category || '').toLowerCase()] || defaultCategoryIcon,
+        badge: (c.newBooks ?? 0) > 0,
+    }));
+    const featuredCourses = (data.featuredCourses || []).map((f) => ({
+        id: f.bookId ?? f.id,
+        title: f.bookName ?? f.title ?? '',
+        instructor: f.writerName ?? f.instructor ?? '',
+        tags: [
+            { label: f.category ?? 'General', color: '#A855F7' },
+            { label: f.level ?? 'General', color: levelColors[f.level] || '#6B7280' },
+        ],
+        duration: f.duration ?? '',
+        lessons: `${f.totalChapters ?? 0} lessons`,
+        students: formatStudents(f.totalEnrolledUsers ?? f.enrollmentCount ?? 0),
+        rating: '4.8',
+        badge: null,
+        bookPreviewUrl: f.bookPreviewUrl ?? f.coverImage ?? null,
+    }));
+    return {
+        stats: {
+            totalRegisteredCourses: data.totalRegisteredCourses ?? 0,
+            totalAppUsers: data.totalAppUsers ?? 0,
+            todayNewUsers: data.todayNewUsers ?? 0,
+        },
+        trendingList,
+        categories,
+        featuredCourses,
+    };
+}
+
 const ExploreScreen = () => {
     const { token } = useUser();
+    const navigation = useNavigation();
+
+    const requireAuth = (actionName) => {
+        if (token) return true;
+        Alert.alert('Sign in required', `Please sign in to ${actionName}.`, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Sign In', onPress: () => navigation.getParent()?.navigate('Login') },
+        ]);
+        return false;
+    };
     const [selectedCategoryId, setSelectedCategoryId] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [stats, setStats] = useState({ totalRegisteredCourses: 0, totalAppUsers: 0, todayNewUsers: 0 });
+    const [apiError, setApiError] = useState(null);
+    const [stats, setStats] = useState(EMPTY_STATS);
     const [trendingList, setTrendingList] = useState([]);
     const [categories, setCategories] = useState([]);
     const [featuredCourses, setFeaturedCourses] = useState([]);
+    const [refreshing, setRefreshing] = useState(false);
 
-    const loadExplore = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            if (!token) {
-                setError('Please log in to view Explore');
-                return;
-            }
-            const data = await getExploreData(token);
-            setStats({
-                totalRegisteredCourses: data.totalRegisteredCourses ?? 0,
-                totalAppUsers: data.totalAppUsers ?? 0,
-                todayNewUsers: data.todayNewUsers ?? 0,
-            });
-            setTrendingList((data.trendingNow || []).map((t, i) => ({
-                id: i + 1,
-                title: t.bookName,
-                category: t.category,
-                change: `+${t.percentage ?? 0}%`,
-            })));
-            const cats = (data.browseCategories || []).map((c, i) => ({
-                id: i + 1,
-                title: c.category,
-                count: c.totalBooks ?? 0,
-                newBooks: c.newBooks ?? 0,
-                icon: CATEGORY_ICONS[(c.category || '').toLowerCase()] || defaultCategoryIcon,
-                badge: (c.newBooks ?? 0) > 0,
-            }));
-            setCategories(cats);
-            if (cats.length && selectedCategoryId === null) setSelectedCategoryId(cats[0].id);
-            const levelColors = { Advanced: '#EF4444', Intermediate: '#F59E0B', Beginner: '#22C55E' };
-            setFeaturedCourses((data.featuredCourses || []).map((f) => ({
-                id: f.bookId,
-                title: f.bookName,
-                instructor: f.writerName,
-                tags: [
-                    { label: f.category, color: '#A855F7' },
-                    { label: f.level, color: levelColors[f.level] || '#6B7280' },
-                ],
-                duration: f.duration ?? '',
-                lessons: `${f.totalChapters ?? 0} lessons`,
-                students: formatStudents(f.totalEnrolledUsers ?? 0),
-                rating: '4.8',
-                badge: null,
-                bookPreviewUrl: f.bookPreviewUrl,
-            })));
-        } catch (e) {
-            setError(e.message || 'Failed to load explore');
-        } finally {
-            setLoading(false);
+    const loadExplore = useCallback(async (isRefresh = false) => {
+        if (!isRefresh) setLoading(true);
+        setApiError(null);
+        const { data, error } = await getExploreData(token);
+        const normalized = normalizeExploreData(data);
+        setStats(normalized.stats);
+        setTrendingList(normalized.trendingList);
+        setCategories(normalized.categories);
+        setFeaturedCourses(normalized.featuredCourses);
+        if (normalized.categories.length && selectedCategoryId === null) {
+            setSelectedCategoryId(normalized.categories[0].id);
         }
+        if (error) setApiError(error);
+        setLoading(false);
+        setRefreshing(false);
     }, [token]);
 
     useEffect(() => {
@@ -143,22 +167,6 @@ const ExploreScreen = () => {
         );
     }
 
-    if (error && !trendingList.length && !categories.length) {
-        return (
-            <View style={styles.container}>
-                <LinearGradient colors={[COLORS.background, '#F8F5FF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
-                <SafeAreaView style={styles.safeArea}>
-                    <View style={styles.errorWrap}>
-                        <Text style={styles.errorText}>{error}</Text>
-                        <TouchableOpacity style={styles.retryButton} onPress={loadExplore} activeOpacity={0.8}>
-                            <Text style={styles.retryButtonText}>Retry</Text>
-                        </TouchableOpacity>
-                    </View>
-                </SafeAreaView>
-            </View>
-        );
-    }
-
     return (
         <View style={styles.container}>
             <LinearGradient
@@ -171,6 +179,17 @@ const ExploreScreen = () => {
                         style={styles.scrollView}
                         contentContainerStyle={styles.scrollContent}
                         showsVerticalScrollIndicator={false}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={() => {
+                                    setRefreshing(true);
+                                    loadExplore(true);
+                                }}
+                                colors={[COLORS.primary]}
+                                tintColor={COLORS.primary}
+                            />
+                        }
                     >
                         {/* Header: logo left, title + subtitle right */}
                         <View style={styles.header}>
@@ -187,6 +206,13 @@ const ExploreScreen = () => {
                                 <Text style={styles.headerSubtitle}>Discover your next adventure.</Text>
                             </View>
                         </View>
+
+                        {apiError ? (
+                            <TouchableOpacity style={styles.apiErrorBanner} onPress={() => loadExplore()} activeOpacity={0.9}>
+                                <Text style={styles.apiErrorText}>{apiError}</Text>
+                                <Text style={styles.apiErrorRetry}>Tap to retry</Text>
+                            </TouchableOpacity>
+                        ) : null}
 
                         {/* Search bar with filter */}
                         <View style={styles.searchRow}>
@@ -245,6 +271,7 @@ const ExploreScreen = () => {
                                         index < trendingList.length - 1 && styles.trendingRowBorder,
                                     ]}
                                     activeOpacity={0.7}
+                                    onPress={() => requireAuth('view course details')}
                                 >
                                     <View style={styles.trendingNumberWrap}>
                                         <LinearGradient
@@ -279,7 +306,7 @@ const ExploreScreen = () => {
                                     <TouchableOpacity
                                         key={cat.id}
                                         style={styles.categoryCardWrap}
-                                        onPress={() => setSelectedCategoryId(cat.id)}
+                                        onPress={() => requireAuth('browse courses by category') && setSelectedCategoryId(cat.id)}
                                         activeOpacity={0.8}
                                     >
                                         {isActive && (
@@ -315,7 +342,7 @@ const ExploreScreen = () => {
                                 <View style={[styles.indicator, { backgroundColor: ORANGE_ACCENT }]} />
                                 <Text style={styles.sectionTitle}>Featured Courses</Text>
                             </View>
-                            <TouchableOpacity style={styles.seeAllRow}>
+                            <TouchableOpacity style={styles.seeAllRow} onPress={() => requireAuth('view all featured courses')}>
                                 <Text style={styles.seeAllText}>See All</Text>
                                 <ChevronRight size={18} color={COLORS.primary} />
                             </TouchableOpacity>
@@ -373,6 +400,7 @@ const ExploreScreen = () => {
                                         <TouchableOpacity
                                             style={styles.enrollButtonWrap}
                                             activeOpacity={0.8}
+                                            onPress={() => requireAuth('enroll in courses')}
                                         >
                                             <LinearGradient
                                                 colors={GRADIENTS.primary}
@@ -382,7 +410,7 @@ const ExploreScreen = () => {
                                                 <Text style={styles.enrollText}>Enroll Now</Text>
                                             </LinearGradient>
                                         </TouchableOpacity>
-                                        <TouchableOpacity style={styles.heartButton}>
+                                        <TouchableOpacity style={styles.heartButton} onPress={() => requireAuth('save courses')}>
                                             <Heart size={22} color={COLORS.textSecondary} />
                                         </TouchableOpacity>
                                     </View>
@@ -405,12 +433,12 @@ const ExploreScreen = () => {
                                 these courses just for you.
                             </Text>
                             <View style={styles.recommendedActions}>
-                                <TouchableOpacity style={styles.outlineButton} activeOpacity={0.8}>
+                                <TouchableOpacity style={styles.outlineButton} activeOpacity={0.8} onPress={() => requireAuth('view recommended courses')}>
                                     <Text style={styles.outlineButtonText}>View All</Text>
                                 </TouchableOpacity>
                                 <GradientButton
                                     title="Customize"
-                                    onPress={() => {}}
+                                    onPress={() => requireAuth('customize recommendations')}
                                     style={styles.customizeButton}
                                     textStyle={styles.customizeText}
                                 />
@@ -460,6 +488,25 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#fff',
+    },
+    apiErrorBanner: {
+        backgroundColor: 'rgba(239, 68, 68, 0.12)',
+        borderRadius: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        marginBottom: 16,
+        borderLeftWidth: 4,
+        borderLeftColor: COLORS.danger,
+    },
+    apiErrorText: {
+        fontSize: 14,
+        color: COLORS.text,
+        marginBottom: 2,
+    },
+    apiErrorRetry: {
+        fontSize: 12,
+        color: COLORS.primary,
+        fontWeight: '600',
     },
     scrollWrapper: { flex: 1, minHeight: 0 },
     scrollView: { flex: 1 },
