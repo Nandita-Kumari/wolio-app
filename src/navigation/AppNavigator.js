@@ -20,6 +20,8 @@ import DashboardScreen from '../screens/DashboardScreen';
 import LibraryScreen from '../screens/LibraryScreen';
 import ExploreScreen from '../screens/ExploreScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import NotificationScreen from '../screens/NotificationScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 import SplashScreen from '../screens/SplashScreen';
 import { COLORS, GRADIENTS } from '../constants/theme';
 
@@ -190,6 +192,16 @@ const MainStack = () => (
         <Stack.Screen
             name="Profile"
             component={ProfileScreen}
+            options={{ cardStyle: { flex: 1 } }}
+        />
+        <Stack.Screen
+            name="Notifications"
+            component={NotificationScreen}
+            options={{ cardStyle: { flex: 1 } }}
+        />
+        <Stack.Screen
+            name="Settings"
+            component={SettingsScreen}
             options={{ cardStyle: { flex: 1 } }}
         />
     </Stack.Navigator>

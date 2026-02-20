@@ -217,7 +217,12 @@ const ProfileScreen = ({ navigation }) => {
                             end={{ x: 1, y: 1 }}
                             style={styles.banner}
                         />
-                        <TouchableOpacity style={styles.settingsBannerBtn} activeOpacity={0.8}>
+                        <TouchableOpacity
+                            style={styles.settingsBannerBtn}
+                            onPress={() => navigation.navigate('Settings')}
+                            activeOpacity={0.8}
+                            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        >
                             <LinearGradient colors={GRADIENTS.primary} style={styles.settingsBannerGradient}>
                                 <Settings size={18} color="#fff" />
                             </LinearGradient>
@@ -580,14 +585,16 @@ const styles = StyleSheet.create({
     },
     backToDashboard: { fontSize: 15, fontWeight: '600', color: COLORS.text },
 
-    bannerWrap: { position: 'relative', height: 160 },
+    bannerWrap: { position: 'relative', height: 160, zIndex: 5 },
     banner: { width: '100%', height: '100%', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
     settingsBannerBtn: {
         position: 'absolute',
-        bottom: -45,
+        bottom: -20,
         right: 24,
         borderRadius: 20,
         overflow: 'hidden',
+        zIndex: 10,
+        elevation: 10,
     },
     settingsBannerGradient: {
         width: 40,

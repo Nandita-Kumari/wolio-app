@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Image, ActivityIndicator, Alert, Modal, Pressable, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { User, Settings, Bell, LogOut, Clock, Flame, CheckCircle, Play, ArrowRight, Folder, Brain, Plus, X } from 'lucide-react-native';
+import { User, Bell, LogOut, Clock, Flame, CheckCircle, Play, ArrowRight, Folder, Brain, Plus, X } from 'lucide-react-native';
 import { Trophy } from 'lucide-react-native/icons';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
 import GlassCard from '../components/GlassCard';
@@ -148,7 +148,7 @@ const DashboardScreen = ({ navigation }) => {
                                 <Text style={styles.date}>{dateStr}</Text>
                             </View>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.notificationBtn} onPress={() => { setDropdownVisible(false); requireAuth('notifications'); }}>
+                        <TouchableOpacity style={styles.notificationBtn} onPress={() => { setDropdownVisible(false); if (requireAuth('notifications')) navigation.getParent()?.navigate('Notifications'); }}>
                             <View style={styles.notificationBtnInner}>
                                 <Folder size={20} color="#fff" strokeWidth={2.5} />
                             </View>
@@ -189,16 +189,7 @@ const DashboardScreen = ({ navigation }) => {
                                 </Pressable>
                                 <Pressable
                                     style={({ pressed, hovered }) => [styles.dropdownItem, (pressed || hovered) && styles.dropdownItemHover]}
-                                    onPress={() => { setDropdownVisible(false); requireAuth('settings'); }}
-                                >
-                                    <View style={styles.dropdownItemIconWrap}>
-                                        <Settings size={16} color={COLORS.primary} strokeWidth={2} />
-                                    </View>
-                                    <Text style={styles.dropdownItemText}>Settings</Text>
-                                </Pressable>
-                                <Pressable
-                                    style={({ pressed, hovered }) => [styles.dropdownItem, (pressed || hovered) && styles.dropdownItemHover]}
-                                    onPress={() => { setDropdownVisible(false); requireAuth('notifications'); }}
+                                    onPress={() => { setDropdownVisible(false); if (requireAuth('notifications')) navigation.getParent()?.navigate('Notifications'); }}
                                 >
                                     <View style={styles.dropdownItemIconWrap}>
                                         <Bell size={16} color={COLORS.primary} strokeWidth={2} />
