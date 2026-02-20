@@ -21,10 +21,10 @@ export const getExploreData = async (token) => {
     const hasData =
       data &&
       typeof data === 'object' &&
-      (Array.isArray(data.trendingNow) ||
-        Array.isArray(data.browseCategories) ||
-        Array.isArray(data.featuredCourses) ||
-        typeof data.totalRegisteredCourses === 'number');
+      (Array.isArray(data.featuredCourses) ||
+        typeof data.totalRegisteredCourses === 'number' ||
+        Array.isArray(data.trendingNow) ||
+        Array.isArray(data.browseCategories));
     if (hasData) {
       return { data, error: null };
     }

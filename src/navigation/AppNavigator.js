@@ -23,6 +23,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import NotificationScreen from '../screens/NotificationScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import SplashScreen from '../screens/SplashScreen';
+import BookReaderScreen from '../screens/BookReaderScreen';
 import { COLORS, GRADIENTS } from '../constants/theme';
 
 const Stack = createStackNavigator();
@@ -202,6 +203,11 @@ const MainStack = () => (
         <Stack.Screen
             name="Settings"
             component={SettingsScreen}
+            options={{ cardStyle: { flex: 1 } }}
+        />
+        <Stack.Screen
+            name="BookReader"
+            component={BookReaderScreen}
             options={{ cardStyle: { flex: 1 } }}
         />
     </Stack.Navigator>

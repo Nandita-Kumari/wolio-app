@@ -11,28 +11,27 @@ import {
     ActivityIndicator,
     RefreshControl,
     Alert,
+    Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
     Search,
-    Filter,
-    Monitor,
-    Users,
-    Zap,
-    TrendingUp,
     BookOpen,
+    Users,
     Palette,
     Music,
     Code,
-    MessageCircle,
+    Globe,
     ChevronRight,
     Play,
     Heart,
     Star,
     Clock,
+    Brain,
+    Sparkles,
+    ExternalLink,
 } from 'lucide-react-native';
 import { COLORS, SHADOWS, GRADIENTS } from '../constants/theme';
-import GradientButton from '../components/GradientButton';
 import { useNavigation } from '@react-navigation/native';
 import { useUser } from '../context/UserContext';
 import { getExploreData } from '../services/exploreApi';
@@ -45,11 +44,15 @@ const categoryCardWidth = (width - GRID_PADDING * 2 - CARD_GAP) / 2;
 const ORANGE_ACCENT = '#F97316';
 
 const CATEGORY_ICONS = {
-    'quantum physics': BookOpen,
-    'digital art': Palette,
-    'music theory': Music,
+    science: BookOpen,
+    'self help': Sparkles,
+    history: BookOpen,
+    literature: BookOpen,
+    art: Palette,
+    mathematics: BookOpen,
+    music: Music,
     programming: Code,
-    languages: MessageCircle,
+    languages: Globe,
     biology: BookOpen,
 };
 const defaultCategoryIcon = BookOpen;
@@ -60,38 +63,42 @@ const formatStudents = (num) => {
 };
 
 const EMPTY_STATS = { totalRegisteredCourses: 0, totalAppUsers: 0, todayNewUsers: 0 };
-const levelColors = { Advanced: '#EF4444', Intermediate: '#F59E0B', Beginner: '#22C55E' };
+
+const DID_YOU_KNOW = [
+    { id: 1, tag: 'Neuroscience', tagColor: COLORS.primary, icon: Brain, fact: 'Your brain creates new neural pathways every time you learn something new. The more you read, the stronger these connections become.', type: 'video', title: 'How Your Brain Works', meta: '12 min' },
+    { id: 2, tag: 'Astronomy', tagColor: '#0EA5E9', icon: Sparkles, fact: 'There are more stars in the universe than grains of sand on all the beaches on Earth. Learning about them is just a click away.', type: 'course', title: 'Introduction to Astronomy', meta: '24 lessons' },
+    { id: 3, tag: 'Art History', tagColor: COLORS.secondary, icon: Palette, fact: 'Renaissance masters used mathematics to create perfect proportions in their artwork. Art and science have always been connected.', type: 'video', title: 'The Genius of Leonardo', meta: '18 min' },
+];
 
 function normalizeExploreData(data) {
-    if (!data) return { stats: EMPTY_STATS, trendingList: [], categories: [], featuredCourses: [] };
-    const trendingList = (data.trendingNow || []).map((t, i) => ({
-        id: i + 1,
-        title: t.bookName ?? t.title ?? '',
-        category: t.category ?? '',
-        change: `+${t.percentage ?? 0}%`,
-    }));
-    const categories = (data.browseCategories || []).map((c, i) => ({
-        id: i + 1,
-        title: c.category ?? '',
-        count: c.totalBooks ?? 0,
-        newBooks: c.newBooks ?? 0,
-        icon: CATEGORY_ICONS[(c.category || '').toLowerCase()] || defaultCategoryIcon,
-        badge: (c.newBooks ?? 0) > 0,
-    }));
-    const featuredCourses = (data.featuredCourses || []).map((f) => ({
+    if (!data) return { stats: EMPTY_STATS, categories: [], featuredCourses: [] };
+    const featured = (data.featuredCourses || []).map((f) => ({
         id: f.bookId ?? f.id,
         title: f.bookName ?? f.title ?? '',
         instructor: f.writerName ?? f.instructor ?? '',
+        category: f.category ?? 'General',
         tags: [
-            { label: f.category ?? 'General', color: '#A855F7' },
-            { label: f.level ?? 'General', color: levelColors[f.level] || '#6B7280' },
+            { label: f.category ?? 'General', color: COLORS.primary },
+            { label: (f.totalEnrolledUsers ?? 0) > 5 ? 'Popular' : 'Beginner', color: '#22C55E' },
         ],
-        duration: f.duration ?? '',
+        weeks: f.totalChapters ? Math.ceil(f.totalChapters / 5) : 4,
         lessons: `${f.totalChapters ?? 0} lessons`,
         students: formatStudents(f.totalEnrolledUsers ?? f.enrollmentCount ?? 0),
         rating: '4.8',
-        badge: null,
+        isBestseller: (f.totalEnrolledUsers ?? 0) >= 1,
         bookPreviewUrl: f.bookPreviewUrl ?? f.coverImage ?? null,
+    }));
+    const catMap = {};
+    featured.forEach((c) => {
+        const key = (c.category || '').toLowerCase();
+        if (!catMap[key]) catMap[key] = { title: c.category, count: 0 };
+        catMap[key].count += 1;
+    });
+    const categories = Object.entries(catMap).map(([key, v], i) => ({
+        id: i + 1,
+        title: v.title,
+        count: v.count,
+        icon: CATEGORY_ICONS[key] || defaultCategoryIcon,
     }));
     return {
         stats: {
@@ -99,9 +106,8 @@ function normalizeExploreData(data) {
             totalAppUsers: data.totalAppUsers ?? 0,
             todayNewUsers: data.todayNewUsers ?? 0,
         },
-        trendingList,
         categories,
-        featuredCourses,
+        featuredCourses: featured,
     };
 }
 
@@ -117,11 +123,10 @@ const ExploreScreen = () => {
         ]);
         return false;
     };
-    const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+    const [selectedCategoryId, setSelectedCategoryId] = useState('all');
     const [loading, setLoading] = useState(true);
     const [apiError, setApiError] = useState(null);
     const [stats, setStats] = useState(EMPTY_STATS);
-    const [trendingList, setTrendingList] = useState([]);
     const [categories, setCategories] = useState([]);
     const [featuredCourses, setFeaturedCourses] = useState([]);
     const [refreshing, setRefreshing] = useState(false);
@@ -132,12 +137,8 @@ const ExploreScreen = () => {
         const { data, error } = await getExploreData(token);
         const normalized = normalizeExploreData(data);
         setStats(normalized.stats);
-        setTrendingList(normalized.trendingList);
         setCategories(normalized.categories);
         setFeaturedCourses(normalized.featuredCourses);
-        if (normalized.categories.length && selectedCategoryId === null) {
-            setSelectedCategoryId(normalized.categories[0].id);
-        }
         if (error) setApiError(error);
         setLoading(false);
         setRefreshing(false);
@@ -147,13 +148,20 @@ const ExploreScreen = () => {
         loadExplore();
     }, [loadExplore]);
 
+    const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+    const filteredFeaturedCourses =
+        !selectedCategoryId || selectedCategoryId === 'all'
+            ? featuredCourses
+            : featuredCourses.filter(
+                  (c) => c.category && selectedCategory && c.category.toLowerCase() === selectedCategory.title.toLowerCase()
+              );
+
     const statsDisplay = [
-        { value: stats.totalRegisteredCourses ? `${stats.totalRegisteredCourses}+` : '0', label: 'COURSES', icon: Monitor },
+        { value: stats.totalRegisteredCourses ? `${stats.totalRegisteredCourses}+` : '0', label: 'COURSES', icon: BookOpen },
         { value: stats.totalAppUsers >= 1000 ? `${(stats.totalAppUsers / 1000).toFixed(0)}k+` : `${stats.totalAppUsers}+`, label: 'LEARNERS', icon: Users },
-        { value: String(stats.todayNewUsers), label: 'NEW TODAY', icon: Zap },
     ];
 
-    if (loading && !trendingList.length && !categories.length) {
+    if (loading && !categories.length && !featuredCourses.length) {
         return (
             <View style={styles.container}>
                 <LinearGradient colors={[COLORS.background, '#F8F5FF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
@@ -214,7 +222,7 @@ const ExploreScreen = () => {
                             </TouchableOpacity>
                         ) : null}
 
-                        {/* Search bar with filter */}
+                        {/* Search bar */}
                         <View style={styles.searchRow}>
                             <View style={styles.searchContainer}>
                                 <Search size={20} color={COLORS.textSecondary} style={styles.searchIcon} />
@@ -223,14 +231,6 @@ const ExploreScreen = () => {
                                     placeholderTextColor={COLORS.textSecondary}
                                     style={styles.searchInput}
                                 />
-                                <TouchableOpacity style={styles.filterButton} activeOpacity={0.8}>
-                                    <LinearGradient
-                                        colors={GRADIENTS.primary}
-                                        style={styles.filterGradient}
-                                    >
-                                        <Filter size={18} color="#fff" />
-                                    </LinearGradient>
-                                </TouchableOpacity>
                             </View>
                         </View>
 
@@ -252,44 +252,46 @@ const ExploreScreen = () => {
                             ))}
                         </View>
 
-                        {/* Trending Now: orange line + chart icon, single white list card */}
+                        {/* Did You Know? */}
                         <View style={styles.sectionHeader}>
                             <View style={styles.sectionTitleRow}>
                                 <View style={[styles.indicator, { backgroundColor: ORANGE_ACCENT }]} />
-                                <Text style={styles.sectionTitle}>Trending Now</Text>
-                            </View>
-                            <View style={styles.trendingUpIcon}>
-                                <TrendingUp size={20} color={ORANGE_ACCENT} />
+                                <Text style={styles.sectionTitle}>Did You Know?</Text>
                             </View>
                         </View>
-                        <View style={styles.trendingCard}>
-                            {trendingList.map((item, index) => (
+                        {DID_YOU_KNOW.map((item) => {
+                            const IconComp = item.icon;
+                            return (
                                 <TouchableOpacity
                                     key={item.id}
-                                    style={[
-                                        styles.trendingRow,
-                                        index < trendingList.length - 1 && styles.trendingRowBorder,
-                                    ]}
-                                    activeOpacity={0.7}
-                                    onPress={() => requireAuth('view course details')}
+                                    style={styles.didYouKnowCard}
+                                    activeOpacity={0.9}
+                                    onPress={() => requireAuth('view content')}
                                 >
-                                    <View style={styles.trendingNumberWrap}>
-                                        <LinearGradient
-                                            colors={GRADIENTS.primary}
-                                            style={styles.trendingNumberGradient}
-                                        >
-                                            <Text style={styles.trendingNumber}>{index + 1}</Text>
-                                        </LinearGradient>
+                                    <View style={styles.dykRow}>
+                                        <View style={styles.dykIconWrap}>
+                                            <LinearGradient colors={GRADIENTS.primary} style={styles.dykIconGradient}>
+                                                <IconComp size={24} color="#fff" />
+                                            </LinearGradient>
+                                        </View>
+                                        <View style={styles.dykContent}>
+                                            <View style={[styles.dykTag, { backgroundColor: item.tagColor + '22' }]}>
+                                                <Text style={[styles.dykTagText, { color: item.tagColor }]}>{item.tag}</Text>
+                                            </View>
+                                            <Text style={styles.dykFact}>{item.fact}</Text>
+                                            <View style={styles.dykNestedCard}>
+                                                <View style={styles.dykNestedLeft}>
+                                                    <Text style={styles.dykType}>{item.type === 'video' ? 'WATCH VIDEO' : 'TAKE COURSE'}</Text>
+                                                    <Text style={styles.dykTitle}>{item.title}</Text>
+                                                    <Text style={styles.dykMeta}>{item.meta}</Text>
+                                                </View>
+                                                <ExternalLink size={18} color={COLORS.primary} />
+                                            </View>
+                                        </View>
                                     </View>
-                                    <View style={styles.trendingContent}>
-                                        <Text style={styles.trendingTitle}>{item.title}</Text>
-                                        <Text style={styles.trendingCategory}>{item.category}</Text>
-                                    </View>
-                                    <Text style={styles.trendingChange}>{item.change}</Text>
-                                    <ChevronRight size={18} color={COLORS.textSecondary} />
                                 </TouchableOpacity>
-                            ))}
-                        </View>
+                            );
+                        })}
 
                         {/* Browse Categories: orange line, 2x3 grid, active has outer glow */}
                         <View style={styles.sectionHeader}>
@@ -299,6 +301,24 @@ const ExploreScreen = () => {
                             </View>
                         </View>
                         <View style={styles.categoriesGrid}>
+                            <TouchableOpacity
+                                style={styles.categoryCardWrap}
+                                onPress={() => setSelectedCategoryId('all')}
+                                activeOpacity={0.8}
+                            >
+                                {selectedCategoryId === 'all' && (
+                                    <View style={styles.categoryActiveOuter} pointerEvents="none" />
+                                )}
+                                <View style={[styles.categoryCard, selectedCategoryId === 'all' && styles.categoryCardActive]}>
+                                    <View style={styles.categoryIconWrap}>
+                                        <LinearGradient colors={GRADIENTS.primary} style={styles.categoryIconGradient}>
+                                            <BookOpen size={22} color="#fff" />
+                                        </LinearGradient>
+                                    </View>
+                                    <Text style={styles.categoryTitle} numberOfLines={1}>All</Text>
+                                    <Text style={styles.categoryCount}>{featuredCourses.length} course{featuredCourses.length !== 1 ? 's' : ''}</Text>
+                                </View>
+                            </TouchableOpacity>
                             {categories.map((cat) => {
                                 const isActive = selectedCategoryId === cat.id;
                                 const IconComponent = cat.icon;
@@ -313,11 +333,6 @@ const ExploreScreen = () => {
                                             <View style={styles.categoryActiveOuter} pointerEvents="none" />
                                         )}
                                         <View style={[styles.categoryCard, isActive && styles.categoryCardActive]}>
-                                            {cat.badge && cat.newBooks > 0 && (
-                                                <View style={styles.categoryBadge}>
-                                                    <Text style={styles.categoryBadgeText}>{cat.newBooks}</Text>
-                                                </View>
-                                            )}
                                             <View style={styles.categoryIconWrap}>
                                                 <LinearGradient
                                                     colors={GRADIENTS.primary}
@@ -336,30 +351,32 @@ const ExploreScreen = () => {
                             })}
                         </View>
 
-                        {/* Featured Courses: image header, badge, instructor, tags, stats, Enroll + heart */}
+                        {/* Featured Courses */}
                         <View style={styles.sectionHeader}>
                             <View style={styles.sectionTitleRow}>
                                 <View style={[styles.indicator, { backgroundColor: ORANGE_ACCENT }]} />
                                 <Text style={styles.sectionTitle}>Featured Courses</Text>
                             </View>
-                            <TouchableOpacity style={styles.seeAllRow} onPress={() => requireAuth('view all featured courses')}>
-                                <Text style={styles.seeAllText}>See All</Text>
-                                <ChevronRight size={18} color={COLORS.primary} />
-                            </TouchableOpacity>
                         </View>
 
-                        {featuredCourses.map((course) => (
+                        {filteredFeaturedCourses.map((course) => (
                             <View key={course.id} style={styles.featuredCard}>
                                 <View style={styles.featuredImageWrap}>
-                                    <LinearGradient
-                                        colors={['#A855F7', '#C084FC', '#EC4899']}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 1 }}
-                                        style={styles.featuredImage}
-                                    />
-                                    {course.badge && (
+                                    {course.bookPreviewUrl ? (
+                                        <Image source={{ uri: course.bookPreviewUrl }} style={styles.featuredImage} resizeMode="cover" />
+                                    ) : (
+                                        <LinearGradient
+                                            colors={['#A855F7', '#C084FC', '#EC4899']}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 1 }}
+                                            style={styles.featuredImage}
+                                        />
+                                    )}
+                                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.3)']} style={StyleSheet.absoluteFill} />
+                                    {course.isBestseller && (
                                         <View style={styles.featuredBadge}>
-                                            <Text style={styles.featuredBadgeText}>{course.badge}</Text>
+                                            <Star size={12} color="#FBBF24" fill="#FBBF24" />
+                                            <Text style={styles.featuredBadgeText}>BESTSELLER</Text>
                                         </View>
                                     )}
                                     <View style={styles.ratingBadge}>
@@ -385,7 +402,7 @@ const ExploreScreen = () => {
                                     <View style={styles.featuredMetaRow}>
                                         <View style={styles.metaItem}>
                                             <Clock size={14} color={COLORS.textSecondary} />
-                                            <Text style={styles.metaText}>{course.duration}</Text>
+                                            <Text style={styles.metaText}>{course.weeks} weeks</Text>
                                         </View>
                                         <View style={styles.metaItem}>
                                             <BookOpen size={14} color={COLORS.textSecondary} />
@@ -436,12 +453,11 @@ const ExploreScreen = () => {
                                 <TouchableOpacity style={styles.outlineButton} activeOpacity={0.8} onPress={() => requireAuth('view recommended courses')}>
                                     <Text style={styles.outlineButtonText}>View All</Text>
                                 </TouchableOpacity>
-                                <GradientButton
-                                    title="Customize"
-                                    onPress={() => requireAuth('customize recommendations')}
-                                    style={styles.customizeButton}
-                                    textStyle={styles.customizeText}
-                                />
+                                <TouchableOpacity style={styles.customizeButtonWrap} activeOpacity={0.8} onPress={() => requireAuth('customize recommendations')}>
+                                    <LinearGradient colors={GRADIENTS.primary} style={styles.customizeButton}>
+                                        <Text style={styles.customizeText}>Customize</Text>
+                                    </LinearGradient>
+                                </TouchableOpacity>
                             </View>
                         </View>
 
@@ -543,14 +559,6 @@ const styles = StyleSheet.create({
     },
     searchIcon: { marginRight: 10 },
     searchInput: { flex: 1, fontSize: 15, color: COLORS.text, paddingVertical: 0 },
-    filterButton: { borderRadius: 20, overflow: 'hidden', marginLeft: 8 },
-    filterGradient: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
 
     statsRow: {
         flexDirection: 'row',
@@ -588,7 +596,45 @@ const styles = StyleSheet.create({
     sectionTitleRow: { flexDirection: 'row', alignItems: 'center' },
     indicator: { width: 4, height: 18, borderRadius: 2, marginRight: 8 },
     sectionTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text },
-    trendingUpIcon: {},
+
+    didYouKnowCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 16,
+        ...SHADOWS.small,
+    },
+    dykRow: { flexDirection: 'row', alignItems: 'flex-start' },
+    dykIconWrap: { marginRight: 14 },
+    dykIconGradient: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    dykContent: { flex: 1 },
+    dykTag: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+        marginBottom: 8,
+    },
+    dykTagText: { fontSize: 11, fontWeight: '700' },
+    dykFact: { fontSize: 14, color: COLORS.text, lineHeight: 22, marginBottom: 12 },
+    dykNestedCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 12,
+    },
+    dykNestedLeft: { flex: 1 },
+    dykType: { fontSize: 11, fontWeight: '700', color: COLORS.primary, marginBottom: 4 },
+    dykTitle: { fontSize: 14, fontWeight: '600', color: COLORS.text },
+    dykMeta: { fontSize: 12, color: COLORS.textSecondary, marginTop: 4 },
 
     trendingCard: {
         backgroundColor: '#FFFFFF',
@@ -688,15 +734,18 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         ...SHADOWS.medium,
     },
-    featuredImageWrap: { position: 'relative', height: 140 },
+    featuredImageWrap: { position: 'relative', height: 160, overflow: 'hidden' },
     featuredImage: { width: '100%', height: '100%' },
     featuredBadge: {
         position: 'absolute',
         top: 12,
         left: 12,
-        backgroundColor: '#FBBF24',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: 'rgba(251, 191, 36, 0.95)',
         paddingHorizontal: 10,
-        paddingVertical: 4,
+        paddingVertical: 6,
         borderRadius: 8,
     },
     featuredBadgeText: { fontSize: 11, fontWeight: '700', color: '#78350F' },
@@ -767,8 +816,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
     },
     outlineButtonText: { fontSize: 14, fontWeight: '600', color: COLORS.text },
-    customizeButton: { flex: 1, height: 48 },
-    customizeText: { fontSize: 14 },
+    customizeButtonWrap: { flex: 1, marginLeft: 12, borderRadius: 14, overflow: 'hidden' },
+    customizeButton: {
+        height: 48,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    customizeText: { fontSize: 14, fontWeight: '600', color: '#fff' },
 });
 
 export default ExploreScreen;

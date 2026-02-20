@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -9,6 +9,8 @@ import {
     TouchableOpacity,
     Alert,
     Image,
+    ActivityIndicator,
+    RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +18,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { Search, BookOpen, Star, Trophy, ChevronRight, Bookmark, Check } from 'lucide-react-native';
 import { COLORS, GRADIENTS } from '../constants/theme';
 import { useUser } from '../context/UserContext';
+import { getLibraryData } from '../services/libraryApi';
 
 const { width } = Dimensions.get('window');
 const HORIZONTAL_PAD = 24;
@@ -23,10 +26,92 @@ const BOOKSHELF_GAP = 8;
 const BOOKSHELF_CARD_WIDTH = (width - HORIZONTAL_PAD * 2 - BOOKSHELF_GAP * 2) / 3;
 const CARD_WIDTH = (width - 48 - 12) / 2;
 const COMPLETED_CARD_SIZE = 80;
+const BOOK_COLORS = ['#64748B', '#A855F7', '#EC4899', '#EA580C', '#10B981', '#6366F1', '#475569', '#57534E'];
+const DAILY_GOAL_MINS = 10;
+const ANNUAL_GOAL = 20;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+const formatCompletedDate = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[d.getMonth()]} ${d.getDate()}`;
+};
+
+const isRecentlyAdded = (dateStr) => {
+    if (!dateStr) return false;
+    const added = new Date(dateStr).getTime();
+    return Date.now() - added < 7 * MS_PER_DAY;
+};
+
+function normalizeLibraryData(data) {
+    if (!data) {
+        return {
+            todayMins: 0,
+            myBooks: [],
+            exploreBooks: [],
+            completedBooks: [],
+            booksCompleted: 0,
+            annualProgress: 0,
+            booksRemaining: ANNUAL_GOAL,
+        };
+    }
+    const todayReadingTime = data.todayReadingTime ?? 0;
+    const bookshelf = data.bookshelf ?? [];
+    const recommendedBooks = data.recommendedBooks ?? [];
+    const booksCompletedList = data.booksCompleted ?? [];
+    const numberOfBooksCompleted = data.numberOfBooksCompleted ?? booksCompletedList.length;
+
+    const myBooks = bookshelf.map((b, i) => ({
+        id: b.bookId,
+        title: b.title,
+        current: b.currentChapterNumber ?? 0,
+        total: b.totalChapters ?? 1,
+        progress: ((b.progressPercentage ?? 0) / 100) || 0,
+        color: BOOK_COLORS[i % BOOK_COLORS.length],
+        isNew: isRecentlyAdded(b.addedAt),
+        coverImage: b.coverImage,
+    }));
+
+    const exploreBooks = recommendedBooks.map((b) => ({
+        id: b.bookId,
+        title: b.title,
+        author: b.writerName ?? '',
+        rating: 4.5,
+        category: b.category ?? 'General',
+        coverImage: b.coverImage,
+    }));
+
+    const completedBooks = booksCompletedList.slice(0, 10).map((b, i) => ({
+        id: b.bookId,
+        title: b.title,
+        date: formatCompletedDate(b.completedAt),
+        color: BOOK_COLORS[i % BOOK_COLORS.length],
+        coverImage: b.coverImage,
+    }));
+
+    const annualProgress = Math.min(1, numberOfBooksCompleted / ANNUAL_GOAL);
+    const booksRemaining = Math.max(0, ANNUAL_GOAL - numberOfBooksCompleted);
+
+    return {
+        todayMins: todayReadingTime,
+        myBooks,
+        exploreBooks,
+        completedBooks,
+        booksCompleted: numberOfBooksCompleted,
+        annualProgress,
+        booksRemaining,
+    };
+}
 
 const LibraryScreen = () => {
     const { token } = useUser();
     const navigation = useNavigation();
+
+    const [loading, setLoading] = useState(true);
+    const [apiError, setApiError] = useState(null);
+    const [refreshing, setRefreshing] = useState(false);
+    const [libraryData, setLibraryData] = useState(null);
 
     const requireAuth = (actionName) => {
         if (token) return true;
@@ -37,36 +122,45 @@ const LibraryScreen = () => {
         return false;
     };
 
-    const myBooks = [
-        { id: 1, title: 'Industrial Revolution', current: 5, total: 18, progress: 0.25, color: '#64748B', isNew: false },
-        { id: 2, title: 'Quantum Mechanics', current: 14, total: 18, progress: 0.78, color: '#A855F7', isNew: true },
-        { id: 3, title: 'Organic Chemistry', current: 9, total: 15, progress: 0.55, color: '#EC4899', isNew: false },
-        { id: 4, title: 'World Literature', current: 6, total: 22, progress: 0.28, color: '#EA580C', isNew: false },
-        { id: 5, title: 'Cell Biology', current: 11, total: 18, progress: 0.61, color: '#10B981', isNew: false },
-        { id: 6, title: 'Economics Today', current: 3, total: 12, progress: 0.15, color: '#6366F1', isNew: false },
-    ];
+    const loadLibrary = useCallback(async (isRefresh = false) => {
+        if (!isRefresh) setLoading(true);
+        setApiError(null);
+        const { data, error } = await getLibraryData(token);
+        if (data) {
+            setLibraryData(normalizeLibraryData(data));
+        }
+        if (error) setApiError(error);
+        setLoading(false);
+        setRefreshing(false);
+    }, [token]);
 
-    const exploreBooks = [
-        { id: 1, title: 'Advanced Calculus', author: 'Dr. Thomas Wri', rating: 4.8, category: 'MATHEMATICS' },
-        { id: 2, title: 'Ancient Civilizations', author: 'Prof. Jane Doe', rating: 4.9, category: 'HISTORY' },
-        { id: 3, title: 'Philosophy Basics', author: 'Dr. Mark Lee', rating: 4.6, category: 'PHILOSOPHY' },
-        { id: 4, title: 'Space Science', author: 'Dr. Sarah Kim', rating: 4.7, category: 'SCIENCE' },
-        { id: 5, title: 'Digital Art Mastery', author: 'Alex Rivera', rating: 4.5, category: 'ART' },
-        { id: 6, title: 'Climate & Environment', author: 'Dr. Emma Green', rating: 4.9, category: 'ENVIRONMENT' },
-    ];
+    useEffect(() => {
+        loadLibrary();
+    }, [loadLibrary]);
 
-    const completedBooks = [
-        { id: 1, title: 'Intro to Physics', date: 'Feb 15', color: '#64748B' },
-        { id: 2, title: 'Basic Chemistry', date: 'Feb 10', color: '#475569' },
-        { id: 3, title: 'World History', date: 'Feb 5', color: '#57534E' },
-        { id: 4, title: 'Algebra Fundamentals', date: 'Feb 1', color: '#4B5563' },
-    ];
+    const {
+        todayMins = 0,
+        myBooks = [],
+        exploreBooks = [],
+        completedBooks = [],
+        booksCompleted = 0,
+        annualProgress = 0,
+        booksRemaining = ANNUAL_GOAL,
+    } = libraryData || {};
 
-    const todayMins = 5 + 41 / 60; // 5:41 as fractional minutes
-    const dailyGoalMins = 10;
-    const booksCompleted = 12;
-    const annualGoal = 20;
-    const annualProgress = 0.6;
+    if (loading && !libraryData) {
+        return (
+            <View style={styles.container}>
+                <View style={styles.bgGradient} />
+                <SafeAreaView style={styles.safeArea}>
+                    <View style={styles.loadingWrap}>
+                        <ActivityIndicator size="large" color={COLORS.primary} />
+                        <Text style={styles.loadingText}>Loading library...</Text>
+                    </View>
+                </SafeAreaView>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -76,7 +170,22 @@ const LibraryScreen = () => {
                     style={styles.scrollView}
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={true}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={() => { setRefreshing(true); loadLibrary(true); }}
+                            colors={[COLORS.primary]}
+                            tintColor={COLORS.primary}
+                        />
+                    }
                 >
+                    {apiError ? (
+                        <TouchableOpacity style={styles.apiErrorBanner} onPress={() => loadLibrary()} activeOpacity={0.9}>
+                            <Text style={styles.apiErrorText}>{apiError}</Text>
+                            <Text style={styles.apiErrorRetry}>Tap to retry</Text>
+                        </TouchableOpacity>
+                    ) : null}
+
                     {/* Header */}
                     <View style={styles.header}>
                         <View style={styles.headerLeft}>
@@ -85,7 +194,7 @@ const LibraryScreen = () => {
                             </View>
                             <View>
                                 <Text style={styles.headerTitle}>My Library</Text>
-                                <Text style={styles.headerSub}>{myBooks.length} books</Text>
+                                    <Text style={styles.headerSub}>{myBooks.length} book{myBooks.length !== 1 ? 's' : ''}</Text>
                             </View>
                         </View>
                         <TouchableOpacity style={styles.searchBtn} onPress={() => requireAuth('search your library')}>
@@ -114,8 +223,8 @@ const LibraryScreen = () => {
                                 </Svg>
                                 <View style={styles.circularProgressInner}>
                                     <Text style={styles.todayLabel}>Today's Reading</Text>
-                                    <Text style={styles.todayTime}>{Math.floor(todayMins)}:{String(Math.round((todayMins % 1) * 60)).padStart(2, '0')}</Text>
-                                    <Text style={styles.todayGoal}>of your {dailyGoalMins}-min goal →</Text>
+                                    <Text style={styles.todayTime}>{Math.floor(todayMins)}:{String(Math.round(((todayMins % 1) || 0) * 60)).padStart(2, '0')}</Text>
+                                    <Text style={styles.todayGoal}>of your {DAILY_GOAL_MINS}-min goal →</Text>
                                 </View>
                             </View>
                         </View>
@@ -133,13 +242,16 @@ const LibraryScreen = () => {
                     </View>
                     <View style={styles.bookshelfGrid}>
                         {myBooks.map((book, index) => (
-                            <TouchableOpacity key={book.id} style={[styles.bookCard, { width: BOOKSHELF_CARD_WIDTH, marginRight: index % 3 === 2 ? 0 : BOOKSHELF_GAP, marginBottom: BOOKSHELF_GAP }]} onPress={() => requireAuth('open books')} activeOpacity={0.9}>
+                            <TouchableOpacity key={book.id} style={[styles.bookCard, { width: BOOKSHELF_CARD_WIDTH, marginRight: index % 3 === 2 ? 0 : BOOKSHELF_GAP, marginBottom: BOOKSHELF_GAP }]} onPress={() => requireAuth('open books') && navigation.navigate('BookReader', { bookId: book.id })} activeOpacity={0.9}>
                                 {book.isNew && (
                                     <View style={styles.newBadge}>
                                         <Text style={styles.newBadgeText}>NEW</Text>
                                     </View>
                                 )}
                                 <View style={[styles.bookCardImage, { backgroundColor: book.color }]}>
+                                    {book.coverImage ? (
+                                        <Image source={{ uri: book.coverImage }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                                    ) : null}
                                     <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={StyleSheet.absoluteFill} />
                                     <Text style={styles.bookCardTitle}>{book.title}</Text>
                                     <View style={styles.bookCardProgressBar}>
@@ -169,6 +281,9 @@ const LibraryScreen = () => {
                         {exploreBooks.map((book, index) => (
                             <TouchableOpacity key={book.id} style={[styles.exploreCard, { width: BOOKSHELF_CARD_WIDTH, marginRight: index % 3 === 2 ? 0 : BOOKSHELF_GAP, marginBottom: BOOKSHELF_GAP }]} onPress={() => requireAuth('enroll')} activeOpacity={0.9}>
                                 <View style={[styles.exploreCardImage, { backgroundColor: book.id % 2 === 0 ? '#94A3B8' : '#64748B' }]}>
+                                    {book.coverImage ? (
+                                        <Image source={{ uri: book.coverImage }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                                    ) : null}
                                     <Text style={styles.exploreCardTitle}>{book.title}</Text>
                                 </View>
                                 <Text style={styles.exploreCardAuthor}>{book.author}</Text>
@@ -202,17 +317,17 @@ const LibraryScreen = () => {
                                 <Text style={styles.yourProgressTitle}>Your Progress</Text>
                                 <View style={styles.annualProgressRow}>
                                     <Text style={styles.annualLabel}>Annual Goal</Text>
-                                    <Text style={styles.annualPercent}>60%</Text>
+                                    <Text style={styles.annualPercent}>{Math.round(annualProgress * 100)}%</Text>
                                 </View>
                                 <View style={styles.annualBarBg}>
                                     <LinearGradient
                                         colors={GRADIENTS.primary}
                                         start={{ x: 0, y: 0 }}
                                         end={{ x: 1, y: 0 }}
-                                        style={[styles.annualBarFill, { width: '60%' }]}
+                                        style={[styles.annualBarFill, { width: `${Math.round(annualProgress * 100)}%` }]}
                                     />
                                 </View>
-                                <Text style={styles.annualHint}>8 more books to reach your goal of <Text style={styles.annualHintBold}>20 books</Text> this year! 🚀</Text>
+                                <Text style={styles.annualHint}>{booksRemaining} more book{booksRemaining !== 1 ? 's' : ''} to reach your goal of <Text style={styles.annualHintBold}>{ANNUAL_GOAL} books</Text> this year! 🚀</Text>
                             </View>
                             <View style={styles.greatJob}>
                                 <Trophy size={36} color="#F59E0B" />
@@ -230,6 +345,9 @@ const LibraryScreen = () => {
                             {completedBooks.map((book) => (
                                 <TouchableOpacity key={book.id} style={styles.completedBookCard} onPress={() => requireAuth('view')} activeOpacity={0.9}>
                                     <View style={[styles.completedBookImage, { backgroundColor: book.color || '#64748B' }]}>
+                                        {book.coverImage ? (
+                                            <Image source={{ uri: book.coverImage }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                                        ) : null}
                                         <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={StyleSheet.absoluteFill} />
                                         <View style={styles.completedCheck}>
                                             <Check size={14} color="#fff" strokeWidth={3} />
@@ -252,6 +370,35 @@ const LibraryScreen = () => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fff' },
+    loadingWrap: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 12,
+        fontSize: 15,
+        color: COLORS.textSecondary,
+    },
+    apiErrorBanner: {
+        backgroundColor: 'rgba(239, 68, 68, 0.12)',
+        borderRadius: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        marginBottom: 16,
+        borderLeftWidth: 4,
+        borderLeftColor: COLORS.danger,
+    },
+    apiErrorText: {
+        fontSize: 14,
+        color: COLORS.text,
+        marginBottom: 2,
+    },
+    apiErrorRetry: {
+        fontSize: 12,
+        color: COLORS.primary,
+        fontWeight: '600',
+    },
     bgGradient: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: '#F9FAFB',
@@ -463,6 +610,7 @@ const styles = StyleSheet.create({
     exploreCardImage: {
         height: 100,
         borderRadius: 12,
+        overflow: 'hidden',
         justifyContent: 'flex-end',
         padding: 10,
     },

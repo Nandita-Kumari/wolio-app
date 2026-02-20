@@ -15,3 +15,5 @@ export const AUTH_BASE = `${API_BASE_URL}/api/auth`;
 export const EXPLORE_BASE = `${API_BASE_URL}/api/explore`;
 export const PROFILE_BASE = `${API_BASE_URL}/api/profile`;
 export const DASHBOARD_BASE = `${API_BASE_URL}/api/dashboard`;
+export const LIBRARY_BASE = `${API_BASE_URL}/api/library`;
+export const BOOKS_BASE = `${API_BASE_URL}/api/books`;
